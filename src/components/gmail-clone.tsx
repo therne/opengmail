@@ -1930,7 +1930,7 @@ function CalendarInviteBody({ invite }: { invite: CalendarInvite }) {
       <div className="rounded-[18px] border border-[#3c4043] px-5 py-6">
         {invite.meetLink ? (
           <a
-            className="mb-11 flex h-[58px] w-full max-w-[320px] items-center justify-center rounded-md bg-[#5a8dee] px-5 font-google-sans text-[20px] font-semibold text-[#202124] no-underline"
+            className="mb-8 flex h-12 w-full max-w-[320px] items-center justify-center rounded-md bg-[#5a8dee] px-5 font-google-sans text-[17px] font-semibold text-[#202124] no-underline"
             href={`https://${invite.meetLink}`}
             rel="noreferrer"
             target="_blank"
@@ -1939,9 +1939,9 @@ function CalendarInviteBody({ invite }: { invite: CalendarInvite }) {
           </a>
         ) : null}
 
-        <div className="space-y-8 text-[20px] leading-7">
+        <div className="space-y-7 text-base leading-6">
           <section>
-            <h3 className="mb-3 font-google-sans text-[20px] font-semibold text-[var(--text)]">
+            <h3 className="mb-2 font-google-sans text-base font-semibold text-[var(--text)]">
               Meeting link
             </h3>
             <div className="break-words text-[var(--text-muted)]">
@@ -1950,7 +1950,7 @@ function CalendarInviteBody({ invite }: { invite: CalendarInvite }) {
           </section>
 
           <section>
-            <h3 className="mb-3 font-google-sans text-[20px] font-semibold text-[var(--text)]">
+            <h3 className="mb-2 font-google-sans text-base font-semibold text-[var(--text)]">
               When
             </h3>
             <div className="text-[var(--text-soft)]">
@@ -1959,7 +1959,7 @@ function CalendarInviteBody({ invite }: { invite: CalendarInvite }) {
           </section>
 
           <section>
-            <h3 className="mb-3 font-google-sans text-[20px] font-semibold text-[var(--text)]">
+            <h3 className="mb-2 font-google-sans text-base font-semibold text-[var(--text)]">
               Location
             </h3>
             <div className="text-[var(--text-soft)]">
@@ -1974,7 +1974,7 @@ function CalendarInviteBody({ invite }: { invite: CalendarInvite }) {
           </section>
 
           <section>
-            <h3 className="mb-3 font-google-sans text-[20px] font-semibold text-[var(--text)]">
+            <h3 className="mb-2 font-google-sans text-base font-semibold text-[var(--text)]">
               Guests
             </h3>
             <div className="text-[var(--text-soft)]">
@@ -2001,11 +2001,11 @@ function CalendarInviteBody({ invite }: { invite: CalendarInvite }) {
               for {invite.replyFor}
             </div>
             <div className="flex flex-wrap gap-4">
-              <div className="inline-grid h-11 grid-cols-3 overflow-hidden rounded-full border border-[#3c4043] text-[17px] text-[var(--text-soft)]">
+              <div className="inline-grid h-10 grid-cols-3 overflow-hidden rounded-full border border-[#3c4043] text-base text-[var(--text-soft)]">
                 {["Yes", "No", "Maybe"].map((label, index) => (
                   <button
                     className={classNames(
-                      "min-w-[82px] px-4",
+                      "min-w-[74px] px-4",
                       index > 0 && "border-l border-[#3c4043]",
                     )}
                     key={label}
@@ -2016,7 +2016,7 @@ function CalendarInviteBody({ invite }: { invite: CalendarInvite }) {
                 ))}
               </div>
               <button
-                className="h-11 rounded-full border border-[#3c4043] px-6 text-[17px] text-[var(--text-soft)]"
+                className="h-10 rounded-full border border-[#3c4043] px-5 text-base text-[var(--text-soft)]"
                 type="button"
               >
                 More options
@@ -2026,7 +2026,7 @@ function CalendarInviteBody({ invite }: { invite: CalendarInvite }) {
         </div>
       </div>
 
-      <div className="mt-8 space-y-6 text-[17px] leading-7 text-[var(--text-muted)]">
+      <div className="mt-7 space-y-5 text-[15px] leading-6 text-[var(--text-muted)]">
         <p>
           Invitation from{" "}
           <a className="text-[#8ab4f8] no-underline" href="https://calendar.google.com">
