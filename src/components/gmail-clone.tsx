@@ -842,6 +842,7 @@ export function GmailShell({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string | null>(null);
   const contactCacheRef = useRef<Map<string, CachedContactProfile>>(new Map());
   const didRunQueryEffectRef = useRef(false);
+  const loadRequestIdRef = useRef(0);
 
   const selectedMessage =
     selectedThread?.find((item) => item.id === selectedMessageId) ?? selectedThread?.[0];
@@ -862,6 +863,7 @@ export function GmailShell({ children }: { children: ReactNode }) {
   const loadMessages = useCallback(
     async (options?: { pageToken?: string; append?: boolean; q?: string }) => {
       const append = Boolean(options?.append);
+      const requestId = ++loadRequestIdRef.current;
       if (append) {
         setLoadingMore(true);
       } else {
@@ -889,13 +891,22 @@ export function GmailShell({ children }: { children: ReactNode }) {
         const nextMessages = (payload.messages ?? payload.items ?? []).map(
           normalizeMessage,
         );
+        if (requestId !== loadRequestIdRef.current) {
+          return;
+        }
         setMessages((current) =>
           append ? [...current, ...nextMessages] : nextMessages,
         );
         setNextPageToken(payload.nextPageToken);
       } catch (err) {
+        if (requestId !== loadRequestIdRef.current) {
+          return;
+        }
         setError(err instanceof Error ? err.message : "Unable to load mail.");
       } finally {
+        if (requestId !== loadRequestIdRef.current) {
+          return;
+        }
         if (append) {
           setLoadingMore(false);
         } else {
@@ -910,8 +921,10 @@ export function GmailShell({ children }: { children: ReactNode }) {
     contactCacheRef.current = readCachedContacts();
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void loadSession();
-    void loadMessages();
-  }, [loadMessages, loadSession]);
+    if (pathname !== "/search") {
+      void loadMessages();
+    }
+  }, [loadMessages, loadSession, pathname]);
 
   useEffect(() => {
     if (messages.length === 0 && !selectedThread?.length) {
