@@ -25,17 +25,13 @@ export const FAKE_MAILS: FakeMailConfig[] = [
   {
     id: "adshield-caret-poc-meeting-4",
     threadId: "adshield-caret-poc-meeting",
-    sender: {
-      name: "Jun Kim",
-      email: "jun@at.studio",
-      avatar: "https://lh3.googleusercontent.com/a/ACg8ocJo1p-glL6YYzFukgqR4pdW_jNW3syl4GcDH8LC_Vx-sbNh-USz=s100",
-    },
-    to: [{ name: "Joon Yu", email: "joon@ad-shield.io" }],
+    sender: { name: "Joon Yu", email: "joon@ad-shield.io" },
+    to: [{ name: "Jun Kim", email: "jun@at.studio" }],
     title: "Re: Caret PoC contract sync",
     bodyHtml:
-      "<p>Hi Joon,</p><p>Sounds good. I'll see you at the AdShield SF Office, <strong>1200 Folsom St</strong>, on <strong>May 14 at 2:00 PM</strong>.</p><p>I'll bring the latest Caret PoC agreement, the proposed evaluation checklist, and a short implementation outline so we can close the remaining contract points in person.</p><p>Best,<br>Jun</p>",
+      "<p>Hi Jun,</p><p>Perfect, thanks. I just sent a calendar invite for <strong>May 14 at 2:00 PM</strong> at our SF office, <strong>1200 Folsom St</strong>.</p><p>Looking forward to meeting in person and walking through the Caret PoC agreement. We'll have the product and legal notes ready on our side as well.</p><p>See you at the office then.</p><p>Best,<br>Joon</p>",
     date: "2026-04-30T09:14:00.000+09:00",
-    labels: ["SENT"],
+    labels: ["CATEGORY_PERSONAL", "INBOX"],
     thread: [
       {
         id: "adshield-caret-poc-meeting-1",
@@ -59,7 +55,7 @@ export const FAKE_MAILS: FakeMailConfig[] = [
         to: [{ name: "Joon Yu", email: "joon@ad-shield.io" }],
         title: "Re: Caret PoC contract sync",
         bodyHtml:
-          "<p>Hi Joon,</p><p>Yes, in person would be better. Since I'm building Caret and will be the one walking your team through the PoC scope, I'd like to make sure we are aligned before we hand the contract back to counsel.</p><p>May 14 works for me. Would anything between <strong>2:00 PM and 4:00 PM</strong> work on your side?</p><p>Best,<br>Jun</p>",
+          "<p>Hi Joon,</p><p>Sounds good. May 14 works for me, and anything between <strong>2:00 PM and 4:00 PM</strong> should be fine.</p><p>I'll bring the latest Caret PoC agreement, the proposed evaluation checklist, and a short implementation outline so we can make the meeting concrete.</p><p>Best,<br>Jun</p>",
         date: "2026-04-29T11:37:00.000+09:00",
         labels: ["SENT"],
       },
@@ -70,7 +66,7 @@ export const FAKE_MAILS: FakeMailConfig[] = [
         to: [{ name: "Jun Kim", email: "jun@at.studio" }],
         title: "Re: Caret PoC contract sync",
         bodyHtml:
-          "<p>Hi Jun,</p><p>2:00 PM works well. Let's plan on meeting at our SF office at <strong>1200 Folsom St</strong>.</p><p>If you can bring the latest Caret PoC agreement, the data handling/security addendum, and the evaluation checklist, I can have our product and legal folks review the open items before you arrive. The main things we want to lock down are the acceptance criteria, the pilot window, and how quickly we can move from the PoC into a paid deployment if the results look good.</p><p>Looking forward to seeing the product in person.</p><p>Best,<br>Joon</p>",
+          "<p>Hi Jun,</p><p>2:00 PM works well. Let's plan on meeting at our SF office at <strong>1200 Folsom St</strong>.</p><p>The Caret PoC agreement and evaluation checklist are exactly what we need. I'll make sure the right people on our side have reviewed the open notes before then.</p><p>Best,<br>Joon</p>",
         date: "2026-04-29T16:22:00.000+09:00",
         labels: ["CATEGORY_PERSONAL", "INBOX"],
       },

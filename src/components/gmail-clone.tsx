@@ -777,16 +777,21 @@ function sortThread(messages: MailMessage[]) {
   );
 }
 
-function mergeThreadMessages(detail: RawMailMessage, thread: RawMailMessage[]) {
-  const byId = new Map<string, RawMailMessage>();
-  for (const item of thread) {
-    byId.set(String(item.id ?? crypto.randomUUID()), item);
+function mergeThreadMessages(
+  detail: RawMailMessage,
+  thread: RawMailMessage[],
+  current: MailMessage[] = [],
+) {
+  const byId = new Map<string, MailMessage>();
+  for (const item of thread.map(normalizeMessage)) {
+    byId.set(item.id, item);
   }
-  byId.set(String(detail.id ?? crypto.randomUUID()), {
-    ...byId.get(String(detail.id)),
-    ...detail,
-  });
-  return sortThread([...byId.values()].map(normalizeMessage));
+  for (const item of current) {
+    byId.set(item.id, item);
+  }
+  const selected = normalizeMessage(detail);
+  byId.set(selected.id, selected);
+  return sortThread([...byId.values()]);
 }
 
 type GmailContextValue = {
@@ -795,6 +800,7 @@ type GmailContextValue = {
   clearThread: () => void;
   error: string | null;
   ensureThread: (messageId: string) => Promise<void>;
+  expandedMessageIds: string[];
   loading: boolean;
   loadingMore: boolean;
   loadMore: () => void;
@@ -833,6 +839,7 @@ export function GmailShell({ children }: { children: ReactNode }) {
     null,
   );
   const [selectedMessageId, setSelectedMessageId] = useState<string | null>(null);
+  const [expandedMessageIds, setExpandedMessageIds] = useState<string[]>([]);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [activeQuery, setActiveQuery] = useState("");
@@ -1021,8 +1028,14 @@ export function GmailShell({ children }: { children: ReactNode }) {
       if (!selected) {
         return;
       }
-      setSelectedMessageId(String(selected.id ?? messageId));
-      setSelectedThread(mergeThreadMessages(selected, rawThread));
+      const selectedId = String(selected.id ?? messageId);
+      setSelectedMessageId(selectedId);
+      setExpandedMessageIds((current) =>
+        current.includes(selectedId) ? current : [...current, selectedId],
+      );
+      setSelectedThread((current) =>
+        mergeThreadMessages(selected, rawThread, current ?? []),
+      );
     } catch {
       if (fallback) {
         setSelectedThread([fallback]);
@@ -1035,6 +1048,9 @@ export function GmailShell({ children }: { children: ReactNode }) {
   const openMessage = useCallback(
     async (message: MailMessage) => {
       setSelectedMessageId(message.id);
+      setExpandedMessageIds((current) =>
+        current.includes(message.id) ? current : [...current, message.id],
+      );
       setSelectedThread((current) => {
         const existing = current?.some((item) => item.id === message.id)
           ? current
@@ -1050,6 +1066,9 @@ export function GmailShell({ children }: { children: ReactNode }) {
     async (messageId: string) => {
       const selected = selectedThread?.find((item) => item.id === messageId);
       setSelectedMessageId(messageId);
+      setExpandedMessageIds((current) =>
+        current.includes(messageId) ? current : [...current, messageId],
+      );
       if (selected?.bodyHtml !== undefined) {
         return;
       }
@@ -1085,6 +1104,7 @@ export function GmailShell({ children }: { children: ReactNode }) {
   const clearThread = useCallback(() => {
     setThreadLoading(false);
     setSelectedMessageId(null);
+    setExpandedMessageIds([]);
     setSelectedThread(null);
   }, []);
 
@@ -1116,6 +1136,7 @@ export function GmailShell({ children }: { children: ReactNode }) {
       clearThread,
       error,
       ensureThread,
+      expandedMessageIds,
       loading,
       loadingMore,
       loadMore,
@@ -1139,6 +1160,7 @@ export function GmailShell({ children }: { children: ReactNode }) {
       clearThread,
       ensureThread,
       error,
+      expandedMessageIds,
       loading,
       loadingMore,
       loadMore,
@@ -1304,6 +1326,7 @@ export function ThreadRoute({ messageId }: { messageId: string }) {
     avatar,
     clearThread,
     ensureThread,
+    expandedMessageIds,
     openMessage,
     selectedMessage,
     selectedMessageId,
@@ -1328,6 +1351,7 @@ export function ThreadRoute({ messageId }: { messageId: string }) {
       message={selectedMessage}
       thread={selectedThread ?? [selectedMessage]}
       loading={threadLoading}
+      expandedMessageIds={expandedMessageIds}
       selectedMessageId={selectedMessageId ?? selectedMessage.id}
       avatar={avatar}
       onBack={() => {
@@ -1759,6 +1783,7 @@ function MessageRow({
 function ThreadView({
   avatar,
   loading,
+  expandedMessageIds,
   message,
   onBack,
   onSelectMessage,
@@ -1768,6 +1793,7 @@ function ThreadView({
   message: MailMessage;
   thread: MailMessage[];
   loading: boolean;
+  expandedMessageIds: string[];
   selectedMessageId: string;
   avatar: (message?: MailMessage, size?: string) => React.ReactNode;
   onBack: () => void;
@@ -1826,7 +1852,7 @@ function ThreadView({
             <ThreadMessage
               avatar={avatar}
               bordered={hasThreadBorder && index > 0}
-              expanded={item.id === selectedMessageId}
+              expanded={expandedMessageIds.includes(item.id)}
               item={item}
               key={`${item.source}:${item.id}`}
               loading={loading && item.id === selectedMessageId}
