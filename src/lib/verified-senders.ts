@@ -1,4 +1,5 @@
 export const VERIFIED_SENDER_EMAILS = new Set([
+  "io-online@google.com",
   "team@anthropic.com",
   "team@claude.ai",
   "team@claude.com",
