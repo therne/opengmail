@@ -914,9 +914,6 @@ export function GmailShell({ children }: { children: ReactNode }) {
   const [loadingMore, setLoadingMore] = useState(false);
   const [threadLoading, setThreadLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const showViewportDebug =
-    typeof window !== "undefined" &&
-    new URLSearchParams(window.location.search).get("debugViewport") === "1";
   const contactCacheRef = useRef<Map<string, CachedContactProfile>>(new Map());
   const didRunQueryEffectRef = useRef(false);
   const loadRequestIdRef = useRef(0);
@@ -1241,7 +1238,7 @@ export function GmailShell({ children }: { children: ReactNode }) {
         </div>
         {pathname === "/search" ? null : <BottomNav />}
         <NavigationDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} />
-        {showViewportDebug ? <ViewportDebugOverlay /> : null}
+        <ViewportDebugOverlay />
       </div>
     </GmailContext.Provider>
   );
