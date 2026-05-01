@@ -83,7 +83,20 @@ function credentialFilePath() {
   );
 }
 
-function readCredentialFile(): GoogleCredentialFile | null {
+function readCredentialEnv(): GoogleCredentialFile | null {
+  const raw = env("GOOGLE_CREDENTIALS_JSON") ?? env("SERVICE_ACCOUNTS_JSON");
+  if (!raw) {
+    return null;
+  }
+  return JSON.parse(raw) as GoogleCredentialFile;
+}
+
+function readCredential(): GoogleCredentialFile | null {
+  const fromEnv = readCredentialEnv();
+  if (fromEnv) {
+    return fromEnv;
+  }
+
   const path = credentialFilePath();
   if (!existsSync(/* turbopackIgnore: true */ path)) {
     return null;
@@ -100,21 +113,24 @@ function appRedirectUri(redirectUris?: string[]) {
 }
 
 function oauthClientConfig(): OAuthClientConfig {
-  const file = readCredentialFile();
+  const file = readCredential();
   const oauth = file?.web ?? file?.installed;
 
   return {
-    clientId: required(env("GOOGLE_CLIENT_ID") ?? oauth?.client_id, "GOOGLE_CLIENT_ID or service_accounts.json client_id"),
+    clientId: required(
+      env("GOOGLE_CLIENT_ID") ?? oauth?.client_id,
+      "GOOGLE_CLIENT_ID or GOOGLE_CREDENTIALS_JSON/service_accounts.json client_id",
+    ),
     clientSecret: required(
       env("GOOGLE_CLIENT_SECRET") ?? oauth?.client_secret,
-      "GOOGLE_CLIENT_SECRET or service_accounts.json client_secret",
+      "GOOGLE_CLIENT_SECRET or GOOGLE_CREDENTIALS_JSON/service_accounts.json client_secret",
     ),
     redirectUri: appRedirectUri(oauth?.redirect_uris),
   };
 }
 
 function serviceAccountConfig(): ServiceAccountConfig | null {
-  const file = readCredentialFile();
+  const file = readCredential();
   if (file?.type !== "service_account" || !file.client_email || !file.private_key) {
     return null;
   }
@@ -125,7 +141,7 @@ function serviceAccountConfig(): ServiceAccountConfig | null {
 }
 
 export function googleCredentialMode() {
-  const file = readCredentialFile();
+  const file = readCredential();
   if (file?.type === "service_account") {
     return env("GMAIL_DELEGATED_USER") ? "service-account" : "service-account-needs-delegated-user";
   }
