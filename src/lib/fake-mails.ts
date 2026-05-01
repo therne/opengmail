@@ -29,8 +29,8 @@ export const FAKE_MAILS: FakeMailConfig[] = [
     to: [{ name: "Jun Kim", email: "jun@at.studio" }],
     title: "Re: Caret PoC contract sync",
     bodyHtml:
-      "<p>Hi Jun,</p><p>Perfect, thanks. I just sent a calendar invite for <strong>May 14 at 2:00 PM</strong> at our SF office, <strong>1200 Folsom St</strong>.</p><p>Looking forward to meeting in person and walking through the Caret PoC agreement. We'll have the product and legal notes ready on our side as well.</p><p>See you at the office then.</p><p>Best,<br>Joon</p>",
-    date: "2026-04-30T09:14:00.000+09:00",
+      "<p>Hi Jun,</p><p>2:00 PM works well. I just sent a calendar invite for <strong>May 14 at 2:00 PM</strong> at our SF office, <strong>1200 Folsom St</strong>.</p><p>Looking forward to meeting in person and walking through the Caret PoC agreement. We'll have the product and legal notes ready on our side as well.</p><p>See you at the office then.</p><p>Best,<br>Joon</p>",
+    date: "2026-04-29T16:22:00.000+09:00",
     labels: ["CATEGORY_PERSONAL", "INBOX"],
     thread: [
       {
@@ -58,17 +58,6 @@ export const FAKE_MAILS: FakeMailConfig[] = [
           "<p>Hi Joon,</p><p>Sounds good. May 14 works for me, and anything between <strong>2:00 PM and 4:00 PM</strong> should be fine.</p><p>I'll bring the latest Caret PoC agreement, the proposed evaluation checklist, and a short implementation outline so we can make the meeting concrete.</p><p>Best,<br>Jun</p>",
         date: "2026-04-29T11:37:00.000+09:00",
         labels: ["SENT"],
-      },
-      {
-        id: "adshield-caret-poc-meeting-3",
-        threadId: "adshield-caret-poc-meeting",
-        sender: { name: "Joon Yu", email: "joon@ad-shield.io" },
-        to: [{ name: "Jun Kim", email: "jun@at.studio" }],
-        title: "Re: Caret PoC contract sync",
-        bodyHtml:
-          "<p>Hi Jun,</p><p>2:00 PM works well. Let's plan on meeting at our SF office at <strong>1200 Folsom St</strong>.</p><p>The Caret PoC agreement and evaluation checklist are exactly what we need. I'll make sure the right people on our side have reviewed the open notes before then.</p><p>Best,<br>Joon</p>",
-        date: "2026-04-29T16:22:00.000+09:00",
-        labels: ["CATEGORY_PERSONAL", "INBOX"],
       },
     ],
   },
