@@ -1,6 +1,16 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import "@material/web/button/filled-button.js";
 import "@material/web/button/filled-tonal-button.js";
 import "@material/web/button/outlined-button.js";
@@ -290,10 +300,15 @@ function EmailBodyFrame({ html }: { html: string }) {
     if (!doc) {
       return;
     }
+    const body = doc.body;
+    const documentElement = doc.documentElement;
+    if (!body || !documentElement) {
+      return;
+    }
     const nextHeight = Math.max(
       24,
-      doc.body.scrollHeight,
-      doc.documentElement.scrollHeight,
+      body.scrollHeight,
+      documentElement.scrollHeight,
     );
     setHeight(nextHeight);
   }, []);
@@ -452,7 +467,42 @@ function mergeThreadMessages(detail: RawMailMessage, thread: RawMailMessage[]) {
   return sortThread([...byId.values()].map(normalizeMessage));
 }
 
-export function GmailClone() {
+type GmailContextValue = {
+  activeQuery: string;
+  avatar: (message?: MailMessage, size?: string) => React.ReactNode;
+  clearThread: () => void;
+  error: string | null;
+  ensureThread: (messageId: string) => Promise<void>;
+  loading: boolean;
+  loadingMore: boolean;
+  loadMore: () => void;
+  logout: () => Promise<void>;
+  messages: MailMessage[];
+  nextPageToken?: string;
+  openDrawer: () => void;
+  openMessage: (message: MailMessage) => Promise<void>;
+  query: string;
+  resetInbox: () => void;
+  selectedMessage?: MailMessage;
+  selectedMessageId: string | null;
+  selectedThread: MailMessage[] | null;
+  session: SessionPayload | null;
+  setQuery: (value: string) => void;
+  threadLoading: boolean;
+};
+
+const GmailContext = createContext<GmailContextValue | null>(null);
+
+function useGmail() {
+  const context = useContext(GmailContext);
+  if (!context) {
+    throw new Error("Gmail route components must be rendered inside GmailShell.");
+  }
+  return context;
+}
+
+export function GmailShell({ children }: { children: ReactNode }) {
+  const router = useRouter();
   const [session, setSession] = useState<SessionPayload | null>(null);
   const [messages, setMessages] = useState<MailMessage[]>([]);
   const [nextPageToken, setNextPageToken] = useState<string | undefined>();
@@ -598,17 +648,10 @@ export function GmailClone() {
     return () => window.clearTimeout(timeout);
   }, [loadMessages, query]);
 
-  const openMessage = async (message: MailMessage) => {
-    setSelectedMessageId(message.id);
-    setSelectedThread((current) => {
-      const existing = current?.some((item) => item.id === message.id)
-        ? current
-        : [...(current ?? []), message];
-      return sortThread(existing);
-    });
+  const fetchThread = useCallback(async (messageId: string, fallback?: MailMessage) => {
     setThreadLoading(true);
     try {
-      const response = await fetch(`/api/messages/${encodeURIComponent(message.id)}`, {
+      const response = await fetch(`/api/messages/${encodeURIComponent(messageId)}`, {
         cache: "no-store",
       });
       if (!response.ok) {
@@ -622,22 +665,54 @@ export function GmailClone() {
         payload.messages ??
         detail?.thread ??
         []) as RawMailMessage[];
-      const selected = (detail ?? rawThread[0] ?? message) as RawMailMessage;
+      const selected = (detail ?? rawThread[0] ?? fallback) as RawMailMessage | undefined;
+      if (!selected) {
+        return;
+      }
+      setSelectedMessageId(String(selected.id ?? messageId));
       setSelectedThread(mergeThreadMessages(selected, rawThread));
     } catch {
-      setSelectedThread([message]);
+      if (fallback) {
+        setSelectedThread([fallback]);
+      }
     } finally {
       setThreadLoading(false);
     }
-  };
+  }, []);
 
-  const logout = async () => {
+  const openMessage = useCallback(
+    async (message: MailMessage) => {
+      setSelectedMessageId(message.id);
+      setSelectedThread((current) => {
+        const existing = current?.some((item) => item.id === message.id)
+          ? current
+          : [...(current ?? []), message];
+        return sortThread(existing);
+      });
+      router.push(`/thread/${encodeURIComponent(message.id)}`);
+    },
+    [router],
+  );
+
+  const ensureThread = useCallback(
+    async (messageId: string) => {
+      const selected = selectedThread?.find((item) => item.id === messageId);
+      setSelectedMessageId(messageId);
+      if (selected?.bodyHtml !== undefined) {
+        return;
+      }
+      await fetchThread(messageId, selected);
+    },
+    [fetchThread, selectedThread],
+  );
+
+  const logout = useCallback(async () => {
     await fetch("/api/auth/logout", { method: "POST" });
     setSession({ authenticated: false });
     await loadMessages({ q: activeQuery || undefined });
-  };
+  }, [activeQuery, loadMessages]);
 
-  const avatar = (message?: MailMessage, size = "h-12 w-12") => {
+  const avatar = useCallback((message?: MailMessage, size = "h-12 w-12") => {
     if (!message) {
       return null;
     }
@@ -653,26 +728,179 @@ export function GmailClone() {
         fallback={icon("person")}
       />
     );
-  };
+  }, []);
 
-  const content = selectedMessage ? (
-    <ThreadView
-      message={selectedMessage}
-      thread={selectedThread ?? [selectedMessage]}
-      loading={threadLoading}
-      selectedMessageId={selectedMessage.id}
-      avatar={avatar}
-      onBack={() => {
-        setThreadLoading(false);
-        setSelectedMessageId(null);
-        setSelectedThread(null);
-      }}
-      onSelectMessage={openMessage}
-    />
-  ) : (
+  const clearThread = useCallback(() => {
+    setThreadLoading(false);
+    setSelectedMessageId(null);
+    setSelectedThread(null);
+  }, []);
+
+  const resetInbox = useCallback(() => {
+    setQuery("");
+    setActiveQuery("");
+    void loadMessages();
+  }, [loadMessages]);
+
+  const loadMore = useCallback(() => {
+    if (!nextPageToken) {
+      return;
+    }
+    void loadMessages({
+      append: true,
+      pageToken: nextPageToken,
+      q: activeQuery || undefined,
+    });
+  }, [activeQuery, loadMessages, nextPageToken]);
+
+  const openDrawer = useCallback(() => {
+    setDrawerOpen(true);
+  }, []);
+
+  const value = useMemo<GmailContextValue>(
+    () => ({
+      activeQuery,
+      avatar,
+      clearThread,
+      error,
+      ensureThread,
+      loading,
+      loadingMore,
+      loadMore,
+      logout,
+      messages,
+      nextPageToken,
+      openDrawer,
+      openMessage,
+      query,
+      resetInbox,
+      selectedMessage,
+      selectedMessageId,
+      selectedThread,
+      session,
+      setQuery,
+      threadLoading,
+    }),
+    [
+      activeQuery,
+      avatar,
+      clearThread,
+      ensureThread,
+      error,
+      loading,
+      loadingMore,
+      loadMore,
+      logout,
+      messages,
+      nextPageToken,
+      openDrawer,
+      openMessage,
+      query,
+      resetInbox,
+      selectedMessage,
+      selectedMessageId,
+      selectedThread,
+      session,
+      threadLoading,
+    ],
+  );
+
+  return (
+    <GmailContext.Provider value={value}>
+      <div className="relative h-dvh w-full overflow-hidden bg-[var(--bg)] text-[var(--text)]">
+        <div className="relative h-full w-full overflow-hidden bg-[var(--bg)]">
+          {children}
+        </div>
+        <BottomNav />
+        <NavigationDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} />
+      </div>
+    </GmailContext.Provider>
+  );
+}
+
+export function InboxRoute() {
+  const router = useRouter();
+  const {
+    activeQuery,
+    avatar,
+    error,
+    loading,
+    loadingMore,
+    loadMore,
+    logout,
+    messages,
+    nextPageToken,
+    openDrawer,
+    openMessage,
+    query,
+    resetInbox,
+    session,
+    setQuery,
+  } = useGmail();
+
+  useEffect(() => {
+    if (query || activeQuery) {
+      resetInbox();
+    }
+  }, [activeQuery, query, resetInbox]);
+
+  return (
     <InboxView
-      activeQuery={activeQuery}
-      drawerOpen={drawerOpen}
+      activeQuery=""
+      error={error}
+      loading={loading}
+      loadingMore={loadingMore}
+      messages={messages}
+      nextPageToken={nextPageToken}
+      query=""
+      session={session}
+      avatar={avatar}
+      onCompose={() => undefined}
+      onDrawer={openDrawer}
+      onLogin={() => {
+        window.location.href = "/api/auth/login";
+      }}
+      onLogout={logout}
+      onLoadMore={loadMore}
+      onOpen={openMessage}
+      onQueryChange={(value) => {
+        setQuery(value);
+        if (value.trim()) {
+          router.push(`/search?q=${encodeURIComponent(value.trim())}`);
+        }
+      }}
+    />
+  );
+}
+
+export function SearchRoute() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const initialQuery = searchParams.get("q") ?? "";
+  const {
+    activeQuery,
+    avatar,
+    error,
+    loading,
+    loadingMore,
+    loadMore,
+    logout,
+    messages,
+    nextPageToken,
+    openDrawer,
+    openMessage,
+    query,
+    session,
+    setQuery,
+  } = useGmail();
+
+  useEffect(() => {
+    setQuery(initialQuery);
+  }, [initialQuery, setQuery]);
+
+  return (
+    <InboxView
+      activeQuery={activeQuery || initialQuery}
       error={error}
       loading={loading}
       loadingMore={loadingMore}
@@ -682,30 +910,62 @@ export function GmailClone() {
       session={session}
       avatar={avatar}
       onCompose={() => undefined}
-      onDrawer={() => setDrawerOpen(true)}
+      onDrawer={openDrawer}
       onLogin={() => {
         window.location.href = "/api/auth/login";
       }}
       onLogout={logout}
-      onLoadMore={() =>
-        loadMessages({
-          append: true,
-          pageToken: nextPageToken,
-          q: activeQuery || undefined,
-        })
-      }
+      onLoadMore={loadMore}
       onOpen={openMessage}
-      onQueryChange={setQuery}
+      onQueryChange={(value) => {
+        setQuery(value);
+        const trimmed = value.trim();
+        router.replace(trimmed ? `/search?q=${encodeURIComponent(trimmed)}` : "/search", {
+          scroll: false,
+        });
+      }}
     />
   );
+}
+
+export function ThreadRoute({ messageId }: { messageId: string }) {
+  const router = useRouter();
+  const {
+    avatar,
+    clearThread,
+    ensureThread,
+    openMessage,
+    selectedMessage,
+    selectedMessageId,
+    selectedThread,
+    threadLoading,
+  } = useGmail();
+
+  useEffect(() => {
+    void ensureThread(messageId);
+  }, [ensureThread, messageId]);
+
+  if (!selectedMessage) {
+    return (
+      <div className="grid h-full place-items-center bg-[var(--bg)] text-[var(--text-muted)]">
+        <md-circular-progress indeterminate />
+      </div>
+    );
+  }
 
   return (
-    <main className="h-dvh overflow-hidden bg-[var(--bg)] text-[var(--text)]">
-      <div className="relative h-dvh w-full overflow-hidden bg-[var(--bg)]">
-        {content}
-      </div>
-      <NavigationDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} />
-    </main>
+    <ThreadView
+      message={selectedMessage}
+      thread={selectedThread ?? [selectedMessage]}
+      loading={threadLoading}
+      selectedMessageId={selectedMessageId ?? selectedMessage.id}
+      avatar={avatar}
+      onBack={() => {
+        clearThread();
+        router.push("/");
+      }}
+      onSelectMessage={openMessage}
+    />
   );
 }
 
@@ -728,7 +988,6 @@ function InboxView({
   session,
 }: {
   activeQuery: string;
-  drawerOpen: boolean;
   error: string | null;
   loading: boolean;
   loadingMore: boolean;
@@ -861,8 +1120,6 @@ function InboxView({
           Compose
         </span>
       </button>
-
-      <BottomNav />
     </div>
   );
 }
@@ -1038,7 +1295,6 @@ function ThreadView({
           {icon("mood", "text-[24px]")}
         </button>
       </div>
-      <BottomNav />
     </div>
   );
 }
