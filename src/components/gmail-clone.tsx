@@ -1973,7 +1973,7 @@ function ThreadMessage({
 
 function BottomNav() {
   return (
-    <nav className="fixed bottom-0 left-0 z-10 flex h-[calc(52px+var(--safe-bottom))] w-full items-start justify-around bg-[var(--surface-2)] px-4 pb-[var(--safe-bottom)] pt-[10px]">
+    <nav className="bottom-nav fixed left-0 z-10 flex w-full items-start justify-around bg-[var(--surface-2)] px-4 pt-[10px]">
       <button
         aria-label="Mail"
         className="relative grid h-8 w-[72px] place-items-center rounded-[18px] bg-[var(--selected-nav)] text-[#cfe8ff]"

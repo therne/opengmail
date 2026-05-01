@@ -53,7 +53,7 @@ body {
   min-height: 100vh;
   min-height: 100dvh;
   margin: 0;
-  background: var(--bg);
+  background: var(--surface-2);
   color: var(--text);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -77,6 +77,12 @@ body {
   width: 100%;
   overflow: hidden;
   overscroll-behavior: none;
+}
+
+.bottom-nav {
+  bottom: calc(var(--safe-bottom) * -1);
+  height: calc(52px + (var(--safe-bottom) * 2));
+  padding-bottom: calc(var(--safe-bottom) * 2);
 }
 
 button,
