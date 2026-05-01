@@ -19,6 +19,7 @@ import "@material/web/iconbutton/icon-button.js";
 import "@material/web/progress/circular-progress.js";
 import { MailAvatar, type AvatarIdentity } from "./mail-avatar";
 import { isVerifiedSender } from "@/lib/verified-senders";
+import type { CalendarInvite } from "@/lib/mail";
 
 type SessionPayload = {
   authenticated: boolean;
@@ -40,6 +41,7 @@ type MailMessage = {
   subject: string;
   snippet: string;
   bodyHtml?: string;
+  calendarInvite?: CalendarInvite;
   date: string;
   unread?: boolean;
   labels?: string[];
@@ -129,6 +131,9 @@ const materialIconPaths: Record<string, string[]> = {
   ],
   keyboard_arrow_down: ["M7.41 8.59 12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"],
   label_important: ["M4 18.99h11c.67 0 1.27-.32 1.63-.83L21 12l-4.37-6.16C16.27 5.33 15.67 5 15 5H4l5 7-5 6.99z"],
+  location_on: [
+    "M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5A2.5 2.5 0 1 1 12 6a2.5 2.5 0 0 1 0 5.5z",
+  ],
   history: [
     "M13 3c-4.97 0-9 4.03-9 9H1l4 4 4-4H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.78-4.95-2.05l-1.42 1.42C8.26 20 10.51 21 13 21c4.97 0 9-4.03 9-9s-4.03-9-9-9zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z",
   ],
@@ -157,6 +162,9 @@ const materialIconPaths: Record<string, string[]> = {
   person: [
     "M12 6c1.1 0 2 .9 2 2s-.9 2-2 2-2-.9-2-2 .9-2 2-2m0 10c2.7 0 5.8 1.29 6 2H6c.23-.72 3.31-2 6-2m0-12C9.79 4 8 5.79 8 8s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm0 10c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z",
   ],
+  groups: [
+    "M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5s-3 1.34-3 3 1.34 3 3 3zM8 11c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5C15 14.17 10.33 13 8 13zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z",
+  ],
   report: [
     "M15.73 3H8.27L3 8.27v7.46L8.27 21h7.46L21 15.73V8.27L15.73 3zM19 14.9 14.9 19H9.1L5 14.9V9.1L9.1 5h5.8L19 9.1v5.8z",
     "M11 7h2v7h-2z",
@@ -169,6 +177,9 @@ const materialIconPaths: Record<string, string[]> = {
   ],
   schedule: [
     "M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z",
+  ],
+  notes: [
+    "M3 18h12v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z",
   ],
   send: ["m4.01 6.03 7.51 3.22-7.52-1 .01-2.22m7.5 8.72L4 17.97v-2.22l7.51-1M2.01 3 2 10l15 2-15 2 .01 7L23 12 2.01 3z"],
   schedule_send: [
@@ -684,6 +695,26 @@ function VerifiedBadge() {
   );
 }
 
+function titleLabels(message: MailMessage) {
+  const labels = new Set((message.labels ?? []).map((label) => label.toUpperCase()));
+  const visible: Array<{ className: string; text: string }> = [];
+
+  if (labels.has("EXTERNAL")) {
+    visible.push({
+      className: "bg-[var(--external)] text-black",
+      text: "External",
+    });
+  }
+  if (labels.has("INBOX")) {
+    visible.push({
+      className: "border border-[var(--outline)] text-[var(--text-muted)]",
+      text: "Inbox",
+    });
+  }
+
+  return visible;
+}
+
 function sessionAvatarIdentity(session: SessionPayload | null): AvatarIdentity | null {
   if (!session?.authenticated) {
     return null;
@@ -764,6 +795,7 @@ function normalizeMessage(message: RawMailMessage): MailMessage {
       message.snippet ?? message.bodyText ?? stripHtml(message.bodyHtml),
     ),
     bodyHtml: message.bodyHtml,
+    calendarInvite: message.calendarInvite,
     date: message.date ?? new Date().toISOString(),
     unread: Boolean(message.unread),
     labels: message.labels ?? ["Inbox"],
@@ -1780,6 +1812,248 @@ function MessageRow({
   );
 }
 
+function CalendarIcon({ day }: { day: string }) {
+  return (
+    <span
+      aria-hidden
+      className="grid h-6 w-6 shrink-0 overflow-hidden rounded-[3px] bg-white text-center font-google-sans text-[11px] font-semibold leading-none text-[#3c4043]"
+    >
+      <span className="h-1.5 bg-[#4285f4]" />
+      <span className="grid grid-cols-3">
+        <span className="h-1 bg-[#34a853]" />
+        <span className="h-1 bg-[#fbbc04]" />
+        <span className="h-1 bg-[#ea4335]" />
+      </span>
+      <span className="pt-0.5">{day}</span>
+    </span>
+  );
+}
+
+function InviteRow({
+  children,
+  iconName,
+}: {
+  children: ReactNode;
+  iconName: string;
+}) {
+  return (
+    <div className="grid grid-cols-[32px_1fr] gap-4">
+      <span className="pt-0.5 text-[#c4c7c5]">{icon(iconName, "text-[26px]")}</span>
+      <div className="min-w-0 text-[15px] leading-6 text-[var(--text-soft)]">
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function guestName(address: { name?: string; email?: string }) {
+  return address.name || address.email || "";
+}
+
+function CalendarInviteSummary({ invite }: { invite: CalendarInvite }) {
+  const organizerName = guestName(invite.organizer);
+  const otherGuests = invite.guests
+    .filter((guest) => guest.email !== invite.organizer.email)
+    .map(guestName)
+    .filter(Boolean)
+    .join(" and ");
+
+  return (
+    <div
+      className="rounded-[18px] border border-[#5f6368] bg-[#202124] px-5 py-5"
+      data-testid="calendar-invite-summary"
+    >
+      <div className="font-google-sans text-[15px] font-semibold leading-5 text-[var(--text)]">
+        {invite.dateLine} · {invite.timeLine}
+      </div>
+      <h2 className="mt-3 font-google-sans text-[34px] font-normal leading-[1.08] text-[var(--text)]">
+        {invite.eventTitle}
+      </h2>
+
+      <div className="mt-6 space-y-5">
+        <InviteRow iconName="location_on">
+          <div>{invite.location.name ?? invite.location.address}</div>
+          {invite.location.name ? (
+            <div className="text-[var(--text-muted)]">{invite.location.address}</div>
+          ) : null}
+        </InviteRow>
+        <InviteRow iconName="groups">
+          <div>
+            {organizerName} <span className="text-[var(--text-muted)]">- Organizer</span>
+          </div>
+          {otherGuests ? <div>{otherGuests}</div> : null}
+        </InviteRow>
+        {invite.details?.length ? (
+          <InviteRow iconName="notes">
+            {invite.details.map((line) => (
+              <div className="truncate" key={line}>
+                {line}
+              </div>
+            ))}
+          </InviteRow>
+        ) : null}
+        <div className="grid grid-cols-[32px_1fr] gap-4">
+          <CalendarIcon day={invite.calendarDay} />
+          <div className="min-w-0 text-[15px] leading-6">
+            <div className="font-medium text-[var(--text)]">On your Google Calendar</div>
+            <div className="text-[var(--text-soft)]">{invite.calendarLine}</div>
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-7 flex gap-3 overflow-x-auto pb-0.5">
+        {["Yes", "No", "Maybe"].map((label) => (
+          <button
+            className="h-12 shrink-0 rounded-full bg-[#7ec8f7] px-8 font-google-sans text-lg font-medium text-[#092642]"
+            key={label}
+            type="button"
+          >
+            {label}
+          </button>
+        ))}
+        <a
+          className="flex h-12 shrink-0 items-center rounded-full bg-[#075a86] px-8 font-google-sans text-lg font-medium text-[#d8f0ff] no-underline"
+          href={invite.location.directionsUrl ?? "#"}
+          rel="noreferrer"
+          target="_blank"
+        >
+          Directions
+        </a>
+      </div>
+    </div>
+  );
+}
+
+function CalendarInviteBody({ invite }: { invite: CalendarInvite }) {
+  return (
+    <div data-testid="calendar-invite-body">
+      <div className="rounded-[18px] border border-[#3c4043] px-5 py-6">
+        {invite.meetLink ? (
+          <a
+            className="mb-11 flex h-[58px] w-full max-w-[320px] items-center justify-center rounded-md bg-[#5a8dee] px-5 font-google-sans text-[20px] font-semibold text-[#202124] no-underline"
+            href={`https://${invite.meetLink}`}
+            rel="noreferrer"
+            target="_blank"
+          >
+            Join with Google Meet
+          </a>
+        ) : null}
+
+        <div className="space-y-8 text-[20px] leading-7">
+          <section>
+            <h3 className="mb-3 font-google-sans text-[20px] font-semibold text-[var(--text)]">
+              Meeting link
+            </h3>
+            <div className="break-words text-[var(--text-muted)]">
+              {invite.meetLink ?? "No video conferencing"}
+            </div>
+          </section>
+
+          <section>
+            <h3 className="mb-3 font-google-sans text-[20px] font-semibold text-[var(--text)]">
+              When
+            </h3>
+            <div className="text-[var(--text-soft)]">
+              {invite.fullWhenLine} ({invite.timezoneLine})
+            </div>
+          </section>
+
+          <section>
+            <h3 className="mb-3 font-google-sans text-[20px] font-semibold text-[var(--text)]">
+              Location
+            </h3>
+            <div className="text-[var(--text-soft)]">
+              {invite.location.name ? (
+                <>
+                  {invite.location.name}
+                  <br />
+                </>
+              ) : null}
+              {invite.location.address}
+            </div>
+          </section>
+
+          <section>
+            <h3 className="mb-3 font-google-sans text-[20px] font-semibold text-[var(--text)]">
+              Guests
+            </h3>
+            <div className="text-[var(--text-soft)]">
+              <div>
+                {guestName(invite.organizer)}{" "}
+                <span className="text-[var(--text-muted)]">- organizer</span>
+              </div>
+              {invite.guests
+                .filter((guest) => guest.email !== invite.organizer.email)
+                .map((guest) => (
+                  <div key={guest.email ?? guest.name}>{guest.email ?? guest.name}</div>
+                ))}
+              <a className="mt-2 inline-block font-semibold text-[#8ab4f8] no-underline" href="#">
+                View all guest info
+              </a>
+            </div>
+          </section>
+
+          <section>
+            <div className="mb-4 text-[var(--text-muted)]">
+              <span className="font-google-sans font-semibold text-[var(--text)]">
+                Reply
+              </span>{" "}
+              for {invite.replyFor}
+            </div>
+            <div className="flex flex-wrap gap-4">
+              <div className="inline-grid h-11 grid-cols-3 overflow-hidden rounded-full border border-[#3c4043] text-[17px] text-[var(--text-soft)]">
+                {["Yes", "No", "Maybe"].map((label, index) => (
+                  <button
+                    className={classNames(
+                      "min-w-[82px] px-4",
+                      index > 0 && "border-l border-[#3c4043]",
+                    )}
+                    key={label}
+                    type="button"
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+              <button
+                className="h-11 rounded-full border border-[#3c4043] px-6 text-[17px] text-[var(--text-soft)]"
+                type="button"
+              >
+                More options
+              </button>
+            </div>
+          </section>
+        </div>
+      </div>
+
+      <div className="mt-8 space-y-6 text-[17px] leading-7 text-[var(--text-muted)]">
+        <p>
+          Invitation from{" "}
+          <a className="text-[#8ab4f8] no-underline" href="https://calendar.google.com">
+            Google Calendar
+          </a>
+        </p>
+        <p>
+          You are receiving this email because you are subscribed to calendar
+          notifications. To stop receiving these emails, go to{" "}
+          <a className="text-[#8ab4f8] no-underline" href="https://calendar.google.com">
+            Calendar settings
+          </a>
+          , select this calendar, and change &quot;Other notifications&quot;.
+        </p>
+        <p>
+          Forwarding this invitation could allow any recipient to send a response to
+          the organizer, be added to the guest list, invite others regardless of
+          their own invitation status, or modify your RSVP.{" "}
+          <a className="text-[#8ab4f8] no-underline" href="https://support.google.com/calendar">
+            Learn more
+          </a>
+        </p>
+      </div>
+    </div>
+  );
+}
+
 function ThreadView({
   avatar,
   loading,
@@ -1801,6 +2075,7 @@ function ThreadView({
 }) {
   const orderedThread = sortThread(thread);
   const hasThreadBorder = orderedThread.length > 1;
+  const visibleLabels = titleLabels(message);
 
   return (
     <div className="relative h-full overflow-hidden">
@@ -1830,12 +2105,17 @@ function ThreadView({
           <div className="grid grid-cols-[1fr_42px] gap-2">
             <h1 className="font-google-sans text-2xl font-normal leading-tight text-[var(--text)]">
               {message.subject}
-              <span className="ml-2 inline-flex translate-y-[-2px] rounded-md bg-[var(--external)] px-2 py-0.5 text-xs font-medium text-black">
-                External
-              </span>
-              <span className="ml-1 inline-flex translate-y-[-2px] rounded-md border border-[var(--outline)] px-2 py-0.5 text-xs font-medium text-[var(--text-muted)]">
-                Inbox
-              </span>
+              {visibleLabels.map((label) => (
+                <span
+                  className={classNames(
+                    "ml-2 inline-flex translate-y-[-2px] rounded-md px-2 py-0.5 text-xs font-medium",
+                    label.className,
+                  )}
+                  key={label.text}
+                >
+                  {label.text}
+                </span>
+              ))}
             </h1>
             <button
               aria-label="Star"
@@ -1845,6 +2125,11 @@ function ThreadView({
               {icon("star", "text-[24px]")}
             </button>
           </div>
+          {message.calendarInvite ? (
+            <div className="pt-5">
+              <CalendarInviteSummary invite={message.calendarInvite} />
+            </div>
+          ) : null}
         </section>
 
         <div className="pt-6">
@@ -1965,18 +2250,20 @@ function ThreadMessage({
           {icon("more_horiz", "text-[24px]")}
         </div>
       </div>
-      <div
-        className="gmail-html-body text-base leading-6"
-        style={{ colorScheme: "dark" }}
-      >
-        {loading && !item.bodyHtml ? (
-          <div className="grid min-h-[160px] place-items-center text-[var(--text-muted)]">
-            <md-circular-progress indeterminate />
-          </div>
-        ) : (
+      {loading && !item.bodyHtml ? (
+        <div className="grid min-h-[160px] place-items-center text-[var(--text-muted)]">
+          <md-circular-progress indeterminate />
+        </div>
+      ) : item.calendarInvite ? (
+        <CalendarInviteBody invite={item.calendarInvite} />
+      ) : (
+        <div
+          className="gmail-html-body text-base leading-6"
+          style={{ colorScheme: "dark" }}
+        >
           <EmailBodyFrame html={mailBodyHtml(item)} />
-        )}
-      </div>
+        </div>
+      )}
     </article>
   );
 }

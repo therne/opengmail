@@ -12,6 +12,26 @@ export type MailAddress = {
   avatar?: string;
 };
 
+export type CalendarInvite = {
+  eventTitle: string;
+  dateLine: string;
+  timeLine: string;
+  fullWhenLine: string;
+  timezoneLine: string;
+  location: {
+    name?: string;
+    address: string;
+    directionsUrl?: string;
+  };
+  organizer: MailAddress;
+  guests: MailAddress[];
+  details?: string[];
+  calendarLine: string;
+  calendarDay: string;
+  replyFor: string;
+  meetLink?: string;
+};
+
 export type MailMessageSummary = {
   id: string;
   threadId: string;
@@ -29,6 +49,7 @@ export type MailMessageDetail = MailMessageSummary & {
   cc?: MailAddress[];
   bodyHtml: string;
   bodyText?: string;
+  calendarInvite?: CalendarInvite;
   thread: MailMessageSummary[];
 };
 

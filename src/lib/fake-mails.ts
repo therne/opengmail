@@ -1,4 +1,4 @@
-import type { MailMessageDetail, MailMessageSummary } from "./mail";
+import type { CalendarInvite, MailMessageDetail, MailMessageSummary } from "./mail";
 
 export type FakeMailConfig = {
   id: string;
@@ -15,6 +15,7 @@ export type FakeMailConfig = {
   }[];
   title: string;
   bodyHtml: string;
+  calendarInvite?: CalendarInvite;
   date: string;
   labels?: string[];
   unread?: boolean;
@@ -22,6 +23,44 @@ export type FakeMailConfig = {
 };
 
 export const FAKE_MAILS: FakeMailConfig[] = [
+  {
+    id: "adshield-caret-calendar-invite",
+    sender: { name: "Joon Yu", email: "joon@ad-shield.io" },
+    to: [{ name: "Jun Kim", email: "jun@at.studio" }],
+    title:
+      "Invitation: Aside <> AdShield PoC Meeting @ Thu May 14, 2026 2pm - 4pm (PDT) (Jun Kim)",
+    bodyHtml:
+      "<p>Aside &lt;&gt; AdShield PoC Meeting</p><p>Thursday, May 14, 2026 · 2:00 PM – 4:00 PM (Pacific Time)</p><p>Location: AdShield SF Office, 1200 Folsom St, San Francisco, CA</p><p>Joon Yu invited Jun Kim to meet in person to finalize the Caret PoC contract scope, security review items, and pilot launch checklist.</p>",
+    calendarInvite: {
+      eventTitle: "Aside <> AdShield PoC Meeting",
+      dateLine: "Thu, May 14",
+      timeLine: "2:00 PM – 4:00 PM",
+      fullWhenLine: "Thursday, May 14, 2026 · 2:00 PM – 4:00 PM",
+      timezoneLine: "Pacific Time",
+      location: {
+        name: "AdShield SF Office",
+        address: "1200 Folsom St, San Francisco, CA",
+        directionsUrl:
+          "https://www.google.com/maps/search/?api=1&query=1200%20Folsom%20St%2C%20San%20Francisco%2C%20CA",
+      },
+      organizer: { name: "Joon Yu", email: "joon@ad-shield.io" },
+      guests: [
+        { name: "Joon Yu", email: "joon@ad-shield.io" },
+        { name: "Jun Kim", email: "jun@at.studio" },
+      ],
+      details: [
+        "Caret PoC contract working session",
+        "Review integration checkpoints, security notes, and launch criteria",
+        "AdShield is hosting at the SF office",
+      ],
+      calendarLine: "No other events on this date",
+      calendarDay: "14",
+      replyFor: "jun@at.studio",
+      meetLink: "meet.google.com/adh-caret-poc",
+    },
+    date: "2026-04-30T14:18:00.000+09:00",
+    labels: ["INBOX"],
+  },
   {
     id: "adshield-caret-poc-meeting-4",
     threadId: "adshield-caret-poc-meeting",
@@ -178,6 +217,7 @@ function searchTextFor(mail: FakeMailConfig) {
       ...(item.to ?? []).flatMap((address) => [address.name, address.email]),
       item.title,
       textFromHtml(item.bodyHtml),
+      JSON.stringify(item.calendarInvite ?? {}),
     ])
     .filter(Boolean)
     .join(" ")
@@ -215,6 +255,7 @@ export function getFakeMailDetail(id: string): MailMessageDetail | null {
     labels: mail.labels ?? [],
     bodyHtml: mail.bodyHtml,
     bodyText: textFromHtml(mail.bodyHtml),
+    calendarInvite: mail.calendarInvite,
     thread: thread.map(summaryFor),
   };
 }
