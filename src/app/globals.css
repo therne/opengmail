@@ -62,6 +62,11 @@ input {
   font-family: "Google Sans", Roboto, system-ui, sans-serif;
 }
 
+.search-route-input::placeholder {
+  font-size: var(--text-base, 1rem);
+  line-height: var(--text-base--line-height, 1.5rem);
+}
+
 .material-symbols-outlined,
 md-icon {
   direction: ltr;

@@ -1152,7 +1152,7 @@ function SearchView({
   return (
     <div className="relative h-full overflow-x-hidden overflow-y-auto overscroll-contain pb-[env(safe-area-inset-bottom)]">
       <form
-        className="sticky top-0 z-30 flex h-[calc(70px+env(safe-area-inset-top))] items-center border-b border-[var(--divider)] bg-[var(--bg)] px-3 pt-[env(safe-area-inset-top)]"
+        className="sticky top-0 z-30 flex h-[calc(70px+env(safe-area-inset-top))] items-center border-b border-[var(--divider)] bg-neutral-800 px-3 pt-[env(safe-area-inset-top)]"
         onSubmit={(event) => {
           event.preventDefault();
           onSearchSubmit(query);
@@ -1173,7 +1173,7 @@ function SearchView({
           autoCapitalize="none"
           autoComplete="off"
           autoCorrect="off"
-          className="font-google-sans h-11 min-w-0 flex-1 bg-transparent px-3 text-base font-normal leading-[44px] text-[var(--text)] outline-none placeholder:text-[var(--text-soft)]"
+          className="font-google-sans search-route-input h-10 min-w-0 flex-1 bg-transparent px-3 text-xl font-normal leading-10 text-[var(--text)] outline-none placeholder:text-[var(--text-soft)]"
           enterKeyHint="search"
           placeholder="Search in mail"
           spellCheck={false}
