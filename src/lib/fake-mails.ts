@@ -2,19 +2,80 @@ import type { MailMessageDetail, MailMessageSummary } from "./mail";
 
 export type FakeMailConfig = {
   id: string;
+  threadId?: string;
   sender: {
     name: string;
     email: string;
     avatar?: string;
   };
+  to?: {
+    name?: string;
+    email: string;
+    avatar?: string;
+  }[];
   title: string;
   bodyHtml: string;
   date: string;
   labels?: string[];
   unread?: boolean;
+  thread?: FakeMailConfig[];
 };
 
 export const FAKE_MAILS: FakeMailConfig[] = [
+  {
+    id: "adshield-caret-poc-meeting-4",
+    threadId: "adshield-caret-poc-meeting",
+    sender: {
+      name: "Jun Kim",
+      email: "jun@at.studio",
+      avatar: "https://lh3.googleusercontent.com/a/ACg8ocJo1p-glL6YYzFukgqR4pdW_jNW3syl4GcDH8LC_Vx-sbNh-USz=s100",
+    },
+    to: [{ name: "Joon Yu", email: "joon@ad-shield.io" }],
+    title: "Re: Caret PoC contract sync",
+    bodyHtml:
+      "<p>Hi Joon,</p><p>Sounds good. I'll see you at the AdShield SF Office, <strong>1200 Folsom St</strong>, on <strong>May 14 at 2:00 PM</strong>.</p><p>I'll bring the latest Caret PoC agreement, the proposed evaluation checklist, and a short implementation outline so we can close the remaining contract points in person.</p><p>Best,<br>Jun</p>",
+    date: "2026-04-30T09:14:00.000+09:00",
+    labels: ["SENT"],
+    thread: [
+      {
+        id: "adshield-caret-poc-meeting-1",
+        threadId: "adshield-caret-poc-meeting",
+        sender: { name: "Joon Yu", email: "joon@ad-shield.io" },
+        to: [{ name: "Jun Kim", email: "jun@at.studio" }],
+        title: "Caret PoC contract sync",
+        bodyHtml:
+          "<p>Hi Jun,</p><p>Good talking earlier. I shared the Caret PoC contract draft with our legal and security teams, and everyone is aligned on moving forward with AdShield as the client for the first evaluation.</p><p>Would you be open to meeting in person while you're in SF? I think it would be easier to walk through the Caret pilot scope, especially the AdShield integration checkpoints, success criteria, and what we need from your team before we start the test run.</p><p>Could we meet at the AdShield SF Office at <strong>1200 Folsom St</strong> on <strong>May 14</strong>?</p><p>Best,<br>Joon</p>",
+        date: "2026-04-28T10:16:00.000+09:00",
+        labels: ["CATEGORY_PERSONAL", "INBOX"],
+      },
+      {
+        id: "adshield-caret-poc-meeting-2",
+        threadId: "adshield-caret-poc-meeting",
+        sender: {
+          name: "Jun Kim",
+          email: "jun@at.studio",
+          avatar: "https://lh3.googleusercontent.com/a/ACg8ocJo1p-glL6YYzFukgqR4pdW_jNW3syl4GcDH8LC_Vx-sbNh-USz=s100",
+        },
+        to: [{ name: "Joon Yu", email: "joon@ad-shield.io" }],
+        title: "Re: Caret PoC contract sync",
+        bodyHtml:
+          "<p>Hi Joon,</p><p>Yes, in person would be better. Since I'm building Caret and will be the one walking your team through the PoC scope, I'd like to make sure we are aligned before we hand the contract back to counsel.</p><p>May 14 works for me. Would anything between <strong>2:00 PM and 4:00 PM</strong> work on your side?</p><p>Best,<br>Jun</p>",
+        date: "2026-04-29T11:37:00.000+09:00",
+        labels: ["SENT"],
+      },
+      {
+        id: "adshield-caret-poc-meeting-3",
+        threadId: "adshield-caret-poc-meeting",
+        sender: { name: "Joon Yu", email: "joon@ad-shield.io" },
+        to: [{ name: "Jun Kim", email: "jun@at.studio" }],
+        title: "Re: Caret PoC contract sync",
+        bodyHtml:
+          "<p>Hi Jun,</p><p>2:00 PM works well. Let's plan on meeting at our SF office at <strong>1200 Folsom St</strong>.</p><p>If you can bring the latest Caret PoC agreement, the data handling/security addendum, and the evaluation checklist, I can have our product and legal folks review the open items before you arrive. The main things we want to lock down are the acceptance criteria, the pilot window, and how quickly we can move from the PoC into a paid deployment if the results look good.</p><p>Looking forward to seeing the product in person.</p><p>Best,<br>Joon</p>",
+        date: "2026-04-29T16:22:00.000+09:00",
+        labels: ["CATEGORY_PERSONAL", "INBOX"],
+      },
+    ],
+  },
   {
     id: "google-io-selected",
     sender: {
@@ -92,19 +153,18 @@ function fakeThreadId(id: string) {
   return `fake-thread-${id}`;
 }
 
-export function getFakeMailSummaries(query?: string): MailMessageSummary[] {
-  const normalizedQuery = query?.trim().toLowerCase();
-  return FAKE_MAILS.filter((mail) => {
-    if (!normalizedQuery) {
-      return true;
-    }
-    return [mail.sender.name, mail.sender.email, mail.title, textFromHtml(mail.bodyHtml)]
-      .join(" ")
-      .toLowerCase()
-      .includes(normalizedQuery);
-  }).map((mail) => ({
+function threadIdFor(mail: FakeMailConfig) {
+  return mail.threadId ?? fakeThreadId(mail.id);
+}
+
+function allThreadMessages(mail: FakeMailConfig) {
+  return [mail, ...(mail.thread ?? [])];
+}
+
+function summaryFor(mail: FakeMailConfig): MailMessageSummary {
+  return {
     id: mail.id,
-    threadId: fakeThreadId(mail.id),
+    threadId: threadIdFor(mail),
     source: "fake",
     from: mail.sender,
     title: mail.title,
@@ -112,21 +172,57 @@ export function getFakeMailSummaries(query?: string): MailMessageSummary[] {
     date: mail.date,
     unread: mail.unread ?? false,
     labels: mail.labels ?? [],
-  }));
+  };
+}
+
+function findFakeMail(id: string) {
+  for (const mail of FAKE_MAILS) {
+    const found = allThreadMessages(mail).find((item) => item.id === id);
+    if (found) {
+      return { mail: found, thread: allThreadMessages(mail) };
+    }
+  }
+  return null;
+}
+
+function searchTextFor(mail: FakeMailConfig) {
+  return allThreadMessages(mail)
+    .flatMap((item) => [
+      item.sender.name,
+      item.sender.email,
+      ...(item.to ?? []).flatMap((address) => [address.name, address.email]),
+      item.title,
+      textFromHtml(item.bodyHtml),
+    ])
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+}
+
+export function getFakeMailSummaries(query?: string): MailMessageSummary[] {
+  const normalizedQuery = query?.trim().toLowerCase();
+  return FAKE_MAILS.filter((mail) => {
+    if (!normalizedQuery) {
+      return true;
+    }
+    const searchText = searchTextFor(mail);
+    return normalizedQuery.split(/\s+/).every((term) => searchText.includes(term));
+  }).map(summaryFor);
 }
 
 export function getFakeMailDetail(id: string): MailMessageDetail | null {
-  const mail = FAKE_MAILS.find((item) => item.id === id);
-  if (!mail) {
+  const found = findFakeMail(id);
+  if (!found) {
     return null;
   }
 
+  const { mail, thread } = found;
   return {
     id: mail.id,
-    threadId: fakeThreadId(mail.id),
+    threadId: threadIdFor(mail),
     source: "fake",
     from: mail.sender,
-    to: [],
+    to: mail.to ?? [],
     title: mail.title,
     snippet: textFromHtml(mail.bodyHtml).slice(0, 180),
     date: mail.date,
@@ -134,6 +230,6 @@ export function getFakeMailDetail(id: string): MailMessageDetail | null {
     labels: mail.labels ?? [],
     bodyHtml: mail.bodyHtml,
     bodyText: textFromHtml(mail.bodyHtml),
-    thread: [],
+    thread: thread.map(summaryFor),
   };
 }
