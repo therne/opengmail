@@ -1152,7 +1152,7 @@ function SearchView({
   return (
     <div className="relative h-full overflow-x-hidden overflow-y-auto overscroll-contain pb-[env(safe-area-inset-bottom)]">
       <form
-        className="sticky top-0 z-30 flex h-[calc(70px+env(safe-area-inset-top))] items-end border-b border-[var(--divider)] bg-[var(--bg)] px-3 pb-3"
+        className="sticky top-0 z-30 flex h-[calc(70px+env(safe-area-inset-top))] items-center border-b border-[var(--divider)] bg-[var(--bg)] px-3 pt-[env(safe-area-inset-top)]"
         onSubmit={(event) => {
           event.preventDefault();
           onSearchSubmit(query);
@@ -1165,7 +1165,7 @@ function SearchView({
           onClick={onBack}
           type="button"
         >
-          {icon("arrow_back_ios_new", "text-[28px]")}
+          {icon("arrow_back_ios_new", "text-[24px]")}
         </button>
         <input
           ref={inputRef}
@@ -1173,11 +1173,11 @@ function SearchView({
           autoCapitalize="none"
           autoComplete="off"
           autoCorrect="off"
-          className="font-google-sans min-w-0 flex-1 bg-transparent px-3 text-[21px] font-normal leading-7 text-[var(--text)] outline-none placeholder:text-[var(--text-soft)]"
+          className="font-google-sans h-11 min-w-0 flex-1 bg-transparent px-3 text-base font-normal leading-[44px] text-[var(--text)] outline-none placeholder:text-[var(--text-soft)]"
           enterKeyHint="search"
           placeholder="Search in mail"
           spellCheck={false}
-          type="search"
+          type="text"
           value={query}
           onChange={(event) => onQueryChange(event.target.value)}
         />
@@ -1191,7 +1191,7 @@ function SearchView({
             }}
             type="button"
           >
-            {icon("close", "text-[30px]")}
+            {icon("close", "text-[24px]")}
           </button>
         ) : (
           <button
@@ -1199,7 +1199,7 @@ function SearchView({
             className="grid h-11 w-11 shrink-0 place-items-center text-[var(--text-soft)]"
             type="button"
           >
-            {icon("mic", "text-[31px]")}
+            {icon("mic", "text-[24px]")}
           </button>
         )}
       </form>
@@ -1223,7 +1223,7 @@ function SearchView({
                   type="button"
                 >
                   <span className="grid h-10 w-10 place-items-center rounded-full bg-[#3f4244] text-[var(--text-soft)]">
-                    {icon("history", "text-[30px]")}
+                    {icon("history", "text-[24px]")}
                   </span>
                   <span className="truncate pl-3">{item}</span>
                 </button>
@@ -1506,7 +1506,7 @@ function MessageRow({
         {timeLabel(message.date)}
       </span>
       <div className="flex h-full flex-col items-end justify-end pb-2 pt-2">
-        {icon("star", "text-[27px] text-[var(--text-muted)]")}
+        {icon("star", "text-[24px] text-[var(--text-muted)]")}
       </div>
     </button>
   );
