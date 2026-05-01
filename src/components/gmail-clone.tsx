@@ -80,6 +80,24 @@ type CachedContactProfile = {
   name?: string;
 };
 
+type ViewportDebugMetrics = {
+  appBottom: number;
+  appHeight: number;
+  bodyHeight: number;
+  clientHeight: number;
+  displayMode: string;
+  innerHeight: number;
+  navBottom: number;
+  navHeight: number;
+  navToViewportBottom: number;
+  safeBottom: string;
+  screenHeight: number;
+  standalone: boolean;
+  vvHeight?: number;
+  vvOffsetTop?: number;
+  vvPageTop?: number;
+};
+
 const CONTACT_CACHE_KEY = "gmail_clone_contact_profiles_v1";
 const CONTACT_CACHE_LIMIT = 500;
 const SEARCH_HISTORY_KEY = "gmail_clone_search_history_v1";
@@ -192,6 +210,62 @@ const materialIconPaths: Record<string, string[]> = {
 
 function classNames(...values: Array<string | false | undefined>) {
   return values.filter(Boolean).join(" ");
+}
+
+function readViewportDebugMetrics(): ViewportDebugMetrics {
+  const rootStyle = getComputedStyle(document.documentElement);
+  const navRect = document.querySelector("[data-bottom-nav]")?.getBoundingClientRect();
+  const appRect = document.querySelector(".app-shell")?.getBoundingClientRect();
+  const modes = ["fullscreen", "standalone", "minimal-ui", "browser"];
+  const displayMode =
+    modes.find((mode) => window.matchMedia(`(display-mode: ${mode})`).matches) ?? "unknown";
+
+  return {
+    appBottom: Math.round(appRect?.bottom ?? 0),
+    appHeight: Math.round(appRect?.height ?? 0),
+    bodyHeight: Math.round(document.body.getBoundingClientRect().height),
+    clientHeight: document.documentElement.clientHeight,
+    displayMode,
+    innerHeight: window.innerHeight,
+    navBottom: Math.round(navRect?.bottom ?? 0),
+    navHeight: Math.round(navRect?.height ?? 0),
+    navToViewportBottom: Math.round(window.innerHeight - (navRect?.bottom ?? 0)),
+    safeBottom: rootStyle.getPropertyValue("--safe-bottom").trim(),
+    screenHeight: window.screen.height,
+    standalone: Boolean((window.navigator as Navigator & { standalone?: boolean }).standalone),
+    vvHeight: window.visualViewport ? Math.round(window.visualViewport.height) : undefined,
+    vvOffsetTop: window.visualViewport ? Math.round(window.visualViewport.offsetTop) : undefined,
+    vvPageTop: window.visualViewport ? Math.round(window.visualViewport.pageTop) : undefined,
+  };
+}
+
+function ViewportDebugOverlay() {
+  const [metrics, setMetrics] = useState<ViewportDebugMetrics | null>(null);
+
+  useEffect(() => {
+    const update = () => setMetrics(readViewportDebugMetrics());
+    update();
+    window.addEventListener("resize", update);
+    window.visualViewport?.addEventListener("resize", update);
+    window.visualViewport?.addEventListener("scroll", update);
+    const interval = window.setInterval(update, 500);
+    return () => {
+      window.clearInterval(interval);
+      window.removeEventListener("resize", update);
+      window.visualViewport?.removeEventListener("resize", update);
+      window.visualViewport?.removeEventListener("scroll", update);
+    };
+  }, []);
+
+  if (!metrics) {
+    return null;
+  }
+
+  return (
+    <pre className="fixed bottom-24 left-2 z-[999] max-w-[92vw] rounded bg-black/85 p-2 text-[11px] leading-4 text-white">
+      {JSON.stringify(metrics, null, 2)}
+    </pre>
+  );
 }
 
 async function readApiJson<T>(response: Response, fallbackMessage: string) {
@@ -840,6 +914,9 @@ export function GmailShell({ children }: { children: ReactNode }) {
   const [loadingMore, setLoadingMore] = useState(false);
   const [threadLoading, setThreadLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const showViewportDebug =
+    typeof window !== "undefined" &&
+    new URLSearchParams(window.location.search).get("debugViewport") === "1";
   const contactCacheRef = useRef<Map<string, CachedContactProfile>>(new Map());
   const didRunQueryEffectRef = useRef(false);
   const loadRequestIdRef = useRef(0);
@@ -1164,6 +1241,7 @@ export function GmailShell({ children }: { children: ReactNode }) {
         </div>
         {pathname === "/search" ? null : <BottomNav />}
         <NavigationDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} />
+        {showViewportDebug ? <ViewportDebugOverlay /> : null}
       </div>
     </GmailContext.Provider>
   );
@@ -1955,7 +2033,10 @@ function ThreadMessage({
 
 function BottomNav() {
   return (
-    <nav className="fixed bottom-0 left-0 z-10 flex h-[calc(52px+var(--safe-bottom))] w-full items-start justify-around bg-[var(--surface-2)] px-4 pb-[var(--safe-bottom)] pt-[10px]">
+    <nav
+      className="fixed bottom-0 left-0 z-10 flex h-[calc(52px+var(--safe-bottom))] w-full items-start justify-around bg-[var(--surface-2)] px-4 pb-[var(--safe-bottom)] pt-[10px]"
+      data-bottom-nav
+    >
       <button
         aria-label="Mail"
         className="relative grid h-8 w-[72px] place-items-center rounded-[18px] bg-[var(--selected-nav)] text-[#cfe8ff]"
