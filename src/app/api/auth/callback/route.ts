@@ -3,6 +3,7 @@ import {
   clearOAuthStateCookie,
   exchangeCodeForSession,
   getOAuthStateFromRequest,
+  oauthCallbackUrl,
   readOAuthState,
   setSessionCookie,
   timingSafeStringEqual,
@@ -24,7 +25,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Invalid OAuth state payload" }, { status: 400 });
   }
 
-  const session = await exchangeCodeForSession(code);
+  const session = await exchangeCodeForSession(code, oauthCallbackUrl(request));
   const response = NextResponse.redirect(new URL(parsedState.returnTo, request.url));
   setSessionCookie(response, session);
   clearOAuthStateCookie(response);

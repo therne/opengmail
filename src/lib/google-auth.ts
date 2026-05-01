@@ -104,15 +104,16 @@ function readCredential(): GoogleCredentialFile | null {
   return JSON.parse(readFileSync(/* turbopackIgnore: true */ path, "utf8")) as GoogleCredentialFile;
 }
 
-function appRedirectUri(redirectUris?: string[]) {
+function appRedirectUri(redirectUris?: string[], redirectUri?: string) {
   return (
+    redirectUri ??
     env("GOOGLE_REDIRECT_URI") ??
     redirectUris?.find((uri) => uri.includes("/api/auth/callback")) ??
     "http://localhost:3000/api/auth/callback"
   );
 }
 
-function oauthClientConfig(): OAuthClientConfig {
+function oauthClientConfig(redirectUri?: string): OAuthClientConfig {
   const file = readCredential();
   const oauth = file?.web ?? file?.installed;
 
@@ -125,7 +126,7 @@ function oauthClientConfig(): OAuthClientConfig {
       env("GOOGLE_CLIENT_SECRET") ?? oauth?.client_secret,
       "GOOGLE_CLIENT_SECRET or GOOGLE_CREDENTIALS_JSON/service_accounts.json client_secret",
     ),
-    redirectUri: appRedirectUri(oauth?.redirect_uris),
+    redirectUri: appRedirectUri(oauth?.redirect_uris, redirectUri),
   };
 }
 
@@ -204,8 +205,12 @@ function safePath(path: string | null) {
   return path;
 }
 
-export function createOAuthClient() {
-  const config = oauthClientConfig();
+export function oauthCallbackUrl(request: NextRequest) {
+  return new URL("/api/auth/callback", request.nextUrl.origin).toString();
+}
+
+export function createOAuthClient(redirectUri?: string) {
+  const config = oauthClientConfig(redirectUri);
   return new google.auth.OAuth2(config.clientId, config.clientSecret, config.redirectUri);
 }
 
@@ -223,8 +228,8 @@ export function readOAuthState(state: string | null): OAuthState | null {
   return decryptJson<OAuthState>(state);
 }
 
-export function buildGoogleAuthUrl(state: string) {
-  return createOAuthClient().generateAuthUrl({
+export function buildGoogleAuthUrl(state: string, redirectUri?: string) {
+  return createOAuthClient(redirectUri).generateAuthUrl({
     access_type: "offline",
     include_granted_scopes: true,
     prompt: "consent",
@@ -233,8 +238,8 @@ export function buildGoogleAuthUrl(state: string) {
   });
 }
 
-export async function exchangeCodeForSession(code: string): Promise<AuthSession> {
-  const client = createOAuthClient();
+export async function exchangeCodeForSession(code: string, redirectUri?: string): Promise<AuthSession> {
+  const client = createOAuthClient(redirectUri);
   const { tokens } = await client.getToken(code);
   if (!tokens.access_token) {
     throw new Error("Google did not return an access token");
