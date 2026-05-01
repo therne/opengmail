@@ -10,7 +10,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import "@material/web/button/filled-button.js";
 import "@material/web/button/filled-tonal-button.js";
 import "@material/web/button/outlined-button.js";
@@ -76,6 +76,8 @@ type CachedContactProfile = {
 
 const CONTACT_CACHE_KEY = "gmail_clone_contact_profiles_v1";
 const CONTACT_CACHE_LIMIT = 500;
+const SEARCH_HISTORY_KEY = "gmail_clone_search_history_v1";
+const SEARCH_HISTORY_LIMIT = 10;
 
 const drawerItems = [
   { icon: "inbox", label: "All inboxes", count: "99+", selected: true },
@@ -121,6 +123,9 @@ const materialIconPaths: Record<string, string[]> = {
   ],
   keyboard_arrow_down: ["M7.41 8.59 12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"],
   label_important: ["M4 18.99h11c.67 0 1.27-.32 1.63-.83L21 12l-4.37-6.16C16.27 5.33 15.67 5 15 5H4l5 7-5 6.99z"],
+  history: [
+    "M13 3c-4.97 0-9 4.03-9 9H1l4 4 4-4H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.78-4.95-2.05l-1.42 1.42C8.26 20 10.51 21 13 21c4.97 0 9-4.03 9-9s-4.03-9-9-9zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z",
+  ],
   mail: [
     "M22 6c0-1.1-.9-2-2-2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6zm-2 0-8 4.99L4 6h16zm0 12H4V8l8 5 8-5v10z",
   ],
@@ -131,6 +136,10 @@ const materialIconPaths: Record<string, string[]> = {
     "M22 8.98V18c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2l.01-12c0-1.1.89-2 1.99-2h10.1c-.06.32-.1.66-.1 1s.04.68.1 1H4l8 5 3.67-2.29c.47.43 1.02.76 1.63.98L12 13 4 8v10h16V9.9c.74-.15 1.42-.48 2-.92zM16 5c0 1.66 1.34 3 3 3s3-1.34 3-3-1.34-3-3-3-3 1.34-3 3z",
   ],
   menu: ["M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"],
+  mic: [
+    "M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z",
+    "M17.3 11c0 3-2.54 5.1-5.3 5.1S6.7 14 6.7 11H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c3.28-.49 6-3.31 6-6.72h-1.7z",
+  ],
   mood: [
     "M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm3.5-9c.83 0 1.5-.67 1.5-1.5S16.33 8 15.5 8 14 8.67 14 9.5s.67 1.5 1.5 1.5zm-7 0c.83 0 1.5-.67 1.5-1.5S9.33 8 8.5 8 7 8.67 7 9.5 7.67 11 8.5 11zm3.5 6.5c2.33 0 4.31-1.46 5.11-3.5H6.89c.8 2.04 2.78 3.5 5.11 3.5z",
   ],
@@ -224,6 +233,84 @@ function decodeHtmlEntities(value = "") {
     }
     return namedEntities[lower] ?? match;
   });
+}
+
+function readSearchHistory() {
+  if (typeof window === "undefined") {
+    return [];
+  }
+  try {
+    const raw = window.localStorage.getItem(SEARCH_HISTORY_KEY);
+    if (!raw) {
+      return [];
+    }
+    const value = JSON.parse(raw);
+    return Array.isArray(value)
+      ? value.filter((item): item is string => typeof item === "string")
+      : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeSearchHistory(items: string[]) {
+  if (typeof window === "undefined") {
+    return;
+  }
+  window.localStorage.setItem(
+    SEARCH_HISTORY_KEY,
+    JSON.stringify(items.slice(0, SEARCH_HISTORY_LIMIT)),
+  );
+}
+
+function addSearchHistoryItem(query: string) {
+  const trimmed = query.trim();
+  if (!trimmed) {
+    return readSearchHistory();
+  }
+  const normalized = trimmed.toLowerCase();
+  const next = [
+    trimmed,
+    ...readSearchHistory().filter((item) => item.trim().toLowerCase() !== normalized),
+  ].slice(0, SEARCH_HISTORY_LIMIT);
+  writeSearchHistory(next);
+  return next;
+}
+
+function highlightedText(value: string, query: string) {
+  const needle = query.trim();
+  if (!needle) {
+    return value;
+  }
+
+  const lowerValue = value.toLowerCase();
+  const lowerNeedle = needle.toLowerCase();
+  const parts: ReactNode[] = [];
+  let cursor = 0;
+  let index = lowerValue.indexOf(lowerNeedle);
+
+  while (index !== -1) {
+    if (index > cursor) {
+      parts.push(value.slice(cursor, index));
+    }
+    const match = value.slice(index, index + needle.length);
+    parts.push(
+      <mark
+        className="rounded-[1px] bg-[#f6e783] px-0.5 text-[#202124]"
+        key={`${index}-${match}`}
+      >
+        {match}
+      </mark>,
+    );
+    cursor = index + needle.length;
+    index = lowerValue.indexOf(lowerNeedle, cursor);
+  }
+
+  if (cursor < value.length) {
+    parts.push(value.slice(cursor));
+  }
+
+  return parts;
 }
 
 function mailBodyHtml(message: MailMessage) {
@@ -502,6 +589,7 @@ function useGmail() {
 }
 
 export function GmailShell({ children }: { children: ReactNode }) {
+  const pathname = usePathname();
   const router = useRouter();
   const [session, setSession] = useState<SessionPayload | null>(null);
   const [messages, setMessages] = useState<MailMessage[]>([]);
@@ -636,7 +724,9 @@ export function GmailShell({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!didRunQueryEffectRef.current) {
       didRunQueryEffectRef.current = true;
-      return;
+      if (!query.trim()) {
+        return;
+      }
     }
 
     const timeout = window.setTimeout(() => {
@@ -811,7 +901,7 @@ export function GmailShell({ children }: { children: ReactNode }) {
         <div className="relative h-full w-full overflow-hidden bg-[var(--bg)]">
           {children}
         </div>
-        <BottomNav />
+        {pathname === "/search" ? null : <BottomNav />}
         <NavigationDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} />
       </div>
     </GmailContext.Provider>
@@ -884,45 +974,71 @@ export function SearchRoute() {
     loading,
     loadingMore,
     loadMore,
-    logout,
     messages,
     nextPageToken,
-    openDrawer,
     openMessage,
     query,
-    session,
     setQuery,
   } = useGmail();
+  const [history, setHistory] = useState<string[]>([]);
 
   useEffect(() => {
     setQuery(initialQuery);
   }, [initialQuery, setQuery]);
 
+  useEffect(() => {
+    const timeout = window.setTimeout(() => {
+      setHistory(readSearchHistory());
+    }, 0);
+    return () => window.clearTimeout(timeout);
+  }, []);
+
+  useEffect(() => {
+    if (activeQuery) {
+      const timeout = window.setTimeout(() => {
+        setHistory(addSearchHistoryItem(activeQuery));
+      }, 0);
+      return () => window.clearTimeout(timeout);
+    }
+    return undefined;
+  }, [activeQuery]);
+
+  const updateQuery = useCallback(
+    (value: string) => {
+      setQuery(value);
+      const trimmed = value.trim();
+      router.replace(trimmed ? `/search?q=${encodeURIComponent(trimmed)}` : "/search", {
+        scroll: false,
+      });
+    },
+    [router, setQuery],
+  );
+
   return (
-    <InboxView
+    <SearchView
       activeQuery={activeQuery || initialQuery}
       error={error}
+      history={history}
       loading={loading}
       loadingMore={loadingMore}
       messages={messages}
       nextPageToken={nextPageToken}
       query={query}
-      session={session}
       avatar={avatar}
-      onCompose={() => undefined}
-      onDrawer={openDrawer}
       onLogin={() => {
         window.location.href = "/api/auth/login";
       }}
-      onLogout={logout}
       onLoadMore={loadMore}
       onOpen={openMessage}
-      onQueryChange={(value) => {
-        setQuery(value);
-        const trimmed = value.trim();
-        router.replace(trimmed ? `/search?q=${encodeURIComponent(trimmed)}` : "/search", {
-          scroll: false,
-        });
+      onBack={() => router.push("/")}
+      onHistorySelect={(value) => {
+        setHistory(addSearchHistoryItem(value));
+        updateQuery(value);
+      }}
+      onQueryChange={updateQuery}
+      onSearchSubmit={(value) => {
+        setHistory(addSearchHistoryItem(value));
+        updateQuery(value);
       }}
     />
   );
@@ -966,6 +1082,200 @@ export function ThreadRoute({ messageId }: { messageId: string }) {
       }}
       onSelectMessage={openMessage}
     />
+  );
+}
+
+function SearchView({
+  activeQuery,
+  avatar,
+  error,
+  history,
+  loading,
+  loadingMore,
+  messages,
+  nextPageToken,
+  onBack,
+  onHistorySelect,
+  onLoadMore,
+  onLogin,
+  onOpen,
+  onQueryChange,
+  onSearchSubmit,
+  query,
+}: {
+  activeQuery: string;
+  error: string | null;
+  history: string[];
+  loading: boolean;
+  loadingMore: boolean;
+  messages: MailMessage[];
+  nextPageToken?: string;
+  query: string;
+  avatar: (message?: MailMessage, size?: string) => React.ReactNode;
+  onBack: () => void;
+  onHistorySelect: (value: string) => void;
+  onLoadMore: () => void;
+  onLogin: () => void;
+  onOpen: (message: MailMessage) => void;
+  onQueryChange: (value: string) => void;
+  onSearchSubmit: (value: string) => void;
+}) {
+  const inputRef = useRef<HTMLInputElement | null>(null);
+  const loadMoreRef = useRef<HTMLDivElement | null>(null);
+  const trimmedQuery = query.trim();
+  const resultQuery = activeQuery || trimmedQuery;
+  const showHistory = !trimmedQuery;
+
+  useEffect(() => {
+    inputRef.current?.focus();
+  }, []);
+
+  useEffect(() => {
+    const target = loadMoreRef.current;
+    if (!target || !nextPageToken || loading || loadingMore || showHistory) {
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry?.isIntersecting) {
+          onLoadMore();
+        }
+      },
+      { root: null, rootMargin: "320px 0px", threshold: 0 },
+    );
+
+    observer.observe(target);
+    return () => observer.disconnect();
+  }, [loading, loadingMore, nextPageToken, onLoadMore, showHistory]);
+
+  return (
+    <div className="relative h-full overflow-x-hidden overflow-y-auto overscroll-contain pb-[env(safe-area-inset-bottom)]">
+      <form
+        className="sticky top-0 z-30 flex h-[calc(70px+env(safe-area-inset-top))] items-end border-b border-[var(--divider)] bg-[var(--bg)] px-3 pb-3"
+        onSubmit={(event) => {
+          event.preventDefault();
+          onSearchSubmit(query);
+          inputRef.current?.blur();
+        }}
+      >
+        <button
+          aria-label="Back"
+          className="grid h-11 w-11 shrink-0 place-items-center text-[var(--text-soft)]"
+          onClick={onBack}
+          type="button"
+        >
+          {icon("arrow_back_ios_new", "text-[28px]")}
+        </button>
+        <input
+          ref={inputRef}
+          aria-label="Search in mail"
+          autoCapitalize="none"
+          autoComplete="off"
+          autoCorrect="off"
+          className="font-google-sans min-w-0 flex-1 bg-transparent px-3 text-[21px] font-normal leading-7 text-[var(--text)] outline-none placeholder:text-[var(--text-soft)]"
+          enterKeyHint="search"
+          placeholder="Search in mail"
+          spellCheck={false}
+          type="search"
+          value={query}
+          onChange={(event) => onQueryChange(event.target.value)}
+        />
+        {trimmedQuery ? (
+          <button
+            aria-label="Clear search"
+            className="grid h-11 w-11 shrink-0 place-items-center text-[var(--text-soft)]"
+            onClick={() => {
+              onQueryChange("");
+              inputRef.current?.focus();
+            }}
+            type="button"
+          >
+            {icon("close", "text-[30px]")}
+          </button>
+        ) : (
+          <button
+            aria-label="Voice search"
+            className="grid h-11 w-11 shrink-0 place-items-center text-[var(--text-soft)]"
+            type="button"
+          >
+            {icon("mic", "text-[31px]")}
+          </button>
+        )}
+      </form>
+
+      {showHistory ? (
+        <section className="px-5 pt-7">
+          <div className="text-xs font-semibold tracking-widest text-[var(--text-soft)]">
+            Recent mail searches
+          </div>
+          <div className="pt-5">
+            {history.length === 0 ? (
+              <div className="py-10 text-center text-sm text-[var(--text-muted)]">
+                No recent searches.
+              </div>
+            ) : (
+              history.slice(0, 6).map((item) => (
+                <button
+                  className="grid h-[66px] w-full grid-cols-[56px_1fr] items-center text-left text-[21px] leading-7 text-[var(--text)] active:bg-white/5"
+                  key={item}
+                  onClick={() => onHistorySelect(item)}
+                  type="button"
+                >
+                  <span className="grid h-10 w-10 place-items-center rounded-full bg-[#3f4244] text-[var(--text-soft)]">
+                    {icon("history", "text-[30px]")}
+                  </span>
+                  <span className="truncate pl-3">{item}</span>
+                </button>
+              ))
+            )}
+          </div>
+        </section>
+      ) : (
+        <>
+          <div className="px-5 pt-6 text-xs font-semibold tracking-widest text-[var(--text-soft)]">
+            All results in mail
+          </div>
+          <div className="pt-4">
+            {loading ? (
+              <div className="grid h-[42vh] place-items-center text-[var(--text-muted)]">
+                <md-circular-progress indeterminate />
+              </div>
+            ) : error ? (
+              <div className="px-8 py-12 text-center text-[var(--text-muted)]">
+                <p>{error}</p>
+                <md-filled-button onClick={onLogin}>Sign in with Google</md-filled-button>
+              </div>
+            ) : messages.length === 0 ? (
+              <div className="px-8 py-16 text-center text-[var(--text-muted)]">
+                No mail found.
+              </div>
+            ) : (
+              messages.map((message) => (
+                <MessageRow
+                  avatar={avatar}
+                  highlightQuery={resultQuery}
+                  key={`${message.source}:${message.id}`}
+                  message={message}
+                  searchResult
+                  onOpen={onOpen}
+                />
+              ))
+            )}
+          </div>
+
+          {nextPageToken ? (
+            <div
+              aria-hidden
+              className="grid min-h-16 place-items-center py-4 text-[var(--text-muted)]"
+              ref={loadMoreRef}
+            >
+              {loadingMore ? <md-circular-progress indeterminate /> : null}
+            </div>
+          ) : null}
+        </>
+      )}
+    </div>
   );
 }
 
@@ -1126,17 +1436,25 @@ function InboxView({
 
 function MessageRow({
   avatar,
+  highlightQuery = "",
   message,
   onOpen,
+  searchResult = false,
 }: {
   message: MailMessage;
+  highlightQuery?: string;
+  searchResult?: boolean;
   avatar: (message?: MailMessage, size?: string) => React.ReactNode;
   onOpen: (message: MailMessage) => void;
 }) {
   const preview = message.snippet || stripHtml(message.bodyHtml);
+  const sender = displayName(message);
   return (
     <button
-      className="relative grid min-h-[88px] w-full grid-cols-[56px_1fr_36px] items-start px-4 py-1.5 text-left active:bg-white/5"
+      className={classNames(
+        "relative grid w-full grid-cols-[56px_1fr_36px] items-start px-4 text-left active:bg-white/5",
+        searchResult ? "min-h-[106px] py-2" : "min-h-[88px] py-1.5",
+      )}
       onClick={() => onOpen(message)}
       type="button"
     >
@@ -1150,7 +1468,7 @@ function MessageRow({
               : "font-medium text-[var(--text-soft)]",
           )}
         >
-          {displayName(message)}
+          {highlightedText(sender, highlightQuery)}
         </div>
         <div
           className={classNames(
@@ -1158,10 +1476,15 @@ function MessageRow({
             message.unread ? "font-bold text-[var(--text)]" : "font-medium text-[var(--text-soft)]",
           )}
         >
-          {message.subject}
+          {highlightedText(message.subject, highlightQuery)}
         </div>
         <div className="line-clamp-1 text-sm font-medium leading-5 text-[var(--text-soft)]">
-          {preview}
+          {highlightedText(preview, highlightQuery)}
+          {searchResult ? (
+            <span className="ml-1 inline-flex translate-y-[-1px] rounded-md border border-[var(--outline)] px-1.5 text-sm font-medium leading-[18px] text-[var(--text-muted)]">
+              Inbox
+            </span>
+          ) : null}
         </div>
         {message.attachments?.[0] ? (
           <div className="mt-2 inline-flex max-w-[190px] items-center gap-2 rounded-[10px] border border-[var(--outline)] px-3 py-1 text-base text-[var(--text-soft)]">
