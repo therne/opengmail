@@ -973,8 +973,24 @@ export function GmailShell({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if ("serviceWorker" in navigator && process.env.NODE_ENV === "production") {
-      navigator.serviceWorker.register("/sw.js").catch(() => undefined);
+      let reloaded = false;
+      const handleControllerChange = () => {
+        if (reloaded) {
+          return;
+        }
+        reloaded = true;
+        window.location.reload();
+      };
+      navigator.serviceWorker.addEventListener("controllerchange", handleControllerChange);
+      navigator.serviceWorker
+        .register("/sw.js")
+        .then((registration) => registration.update())
+        .catch(() => undefined);
+      return () => {
+        navigator.serviceWorker.removeEventListener("controllerchange", handleControllerChange);
+      };
     }
+    return undefined;
   }, []);
 
   useEffect(() => {
