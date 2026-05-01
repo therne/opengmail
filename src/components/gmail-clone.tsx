@@ -388,6 +388,17 @@ function iframeBodyHtml(html: string) {
         max-width: 100% !important;
         min-width: 0 !important;
       }
+      body :where(p, div, span, td, th, li, h1, h2, h3, h4, h5, h6, strong, em, center, font, blockquote, section, article) {
+        color: #e8eaed !important;
+      }
+      body [style*="color:#000"],
+      body [style*="color: #000"],
+      body [style*="color:black"],
+      body [style*="color: black"],
+      body [style*="color:rgb(0"],
+      body [style*="color: rgb(0"] {
+        color: #e8eaed !important;
+      }
       table {
         max-width: 100% !important;
         table-layout: auto !important;
@@ -1195,7 +1206,7 @@ function SearchView({
   return (
     <div className="relative h-full overflow-hidden">
       <form
-        className="absolute left-0 right-0 top-0 z-30 flex h-[calc(70px+env(safe-area-inset-top))] items-center border-b border-[var(--divider)] bg-neutral-800 px-3 pt-[env(safe-area-inset-top)]"
+        className="absolute left-0 right-0 top-0 z-30 flex h-[calc(70px+var(--safe-top))] items-center border-b border-[var(--divider)] bg-neutral-800 px-3 pt-[var(--safe-top)]"
         onSubmit={(event) => {
           event.preventDefault();
           onSearchSubmit(query);
@@ -1247,7 +1258,7 @@ function SearchView({
         )}
       </form>
 
-      <div className="absolute inset-0 overflow-x-hidden overflow-y-auto overscroll-contain pb-[env(safe-area-inset-bottom)] pt-[calc(70px+env(safe-area-inset-top))]">
+      <div className="absolute inset-0 overflow-x-hidden overflow-y-auto overscroll-contain pb-[var(--safe-bottom)] pt-[calc(70px+var(--safe-top))]">
         {showHistory ? (
           <section className="px-5 pt-7">
             <div className="text-xs font-semibold tracking-widest text-[var(--text-soft)]">
@@ -1378,7 +1389,7 @@ function InboxView({
 
   return (
     <div className="relative h-full overflow-hidden">
-      <div className="absolute left-0 right-0 top-0 z-30 bg-[var(--bg)] px-4 pb-3 pt-[calc(13px+env(safe-area-inset-top))]">
+      <div className="absolute left-0 right-0 top-0 z-30 bg-[var(--bg)] px-4 pb-3 pt-[calc(13px+var(--safe-top))]">
         <div className="flex h-[56px] items-center rounded-[28px] bg-[var(--surface)] px-4">
           <button
             aria-label="Open menu"
@@ -1410,7 +1421,7 @@ function InboxView({
         </div>
       </div>
 
-      <div className="absolute inset-0 overflow-x-hidden overflow-y-auto overscroll-contain pb-[calc(132px+env(safe-area-inset-bottom))] pt-[calc(88px+env(safe-area-inset-top))]">
+      <div className="absolute inset-0 overflow-x-hidden overflow-y-auto overscroll-contain pb-[calc(92px+var(--safe-bottom))] pt-[calc(88px+var(--safe-top))]">
         <div className="px-4 pt-4 text-xs font-semibold tracking-widest text-[var(--text-soft)]">
           {activeQuery ? "Search results" : "All inboxes"}
         </div>
@@ -1454,7 +1465,7 @@ function InboxView({
 
       <button
         aria-label="Compose"
-        className="font-google-sans absolute bottom-[calc(68px+env(safe-area-inset-bottom))] right-5 z-20 flex h-14 items-center justify-center gap-x-2 rounded-2xl bg-[var(--compose-blue)] px-4 text-base font-semibold text-white shadow-xl active:scale-[0.98]"
+        className="font-google-sans absolute bottom-[calc(68px+var(--safe-bottom))] right-5 z-20 flex h-14 items-center justify-center gap-x-2 rounded-2xl bg-[var(--compose-blue)] px-4 text-base font-semibold text-white shadow-xl active:scale-[0.98]"
         onClick={onCompose}
         type="button"
       >
@@ -1567,7 +1578,7 @@ function ThreadView({
 
   return (
     <div className="relative h-full overflow-hidden">
-      <div className="absolute left-0 right-0 top-0 z-30 flex h-[calc(56px+env(safe-area-inset-top))] items-end bg-[var(--bg)] px-3 pb-2">
+      <div className="absolute left-0 right-0 top-0 z-30 flex h-[calc(56px+var(--safe-top))] items-end bg-[var(--bg)] px-3 pb-2">
         <button
           aria-label="Back"
           className="mr-auto grid h-10 w-10 place-items-center text-[var(--text-soft)]"
@@ -1588,7 +1599,7 @@ function ThreadView({
         ))}
       </div>
 
-      <div className="absolute inset-0 overflow-x-hidden overflow-y-auto overscroll-contain pb-[calc(154px+env(safe-area-inset-bottom))] pt-[calc(56px+env(safe-area-inset-top))]">
+      <div className="absolute inset-0 overflow-x-hidden overflow-y-auto overscroll-contain pb-[calc(152px+var(--safe-bottom))] pt-[calc(56px+var(--safe-top))]">
         <section className="px-6 pt-4">
           <div className="grid grid-cols-[1fr_42px] gap-2">
             <h1 className="font-google-sans text-2xl font-normal leading-tight text-[var(--text)]">
@@ -1625,7 +1636,7 @@ function ThreadView({
         </div>
       </div>
 
-      <div className="absolute bottom-[calc(52px+env(safe-area-inset-bottom))] left-0 right-0 z-20 mx-auto flex items-center gap-2 bg-[var(--bg)] px-4 py-2">
+      <div className="absolute bottom-[calc(52px+var(--safe-bottom))] left-0 right-0 z-20 mx-auto flex items-center gap-2 bg-[var(--bg)] px-4 py-2">
         <button
           aria-label="Reply"
           className="grid h-12 w-12 shrink-0 place-items-center rounded-full border border-[#3c4043] bg-[var(--bg)] text-[var(--text-soft)] active:bg-white/5"
@@ -1746,7 +1757,7 @@ function ThreadMessage({
 
 function BottomNav() {
   return (
-    <nav className="absolute bottom-0 left-0 z-10 flex h-[calc(52px+env(safe-area-inset-bottom))] w-full items-start justify-around bg-[var(--surface-2)] px-4 pb-[env(safe-area-inset-bottom)] pt-[10px]">
+    <nav className="absolute bottom-0 left-0 z-10 flex h-[calc(52px+var(--safe-bottom))] w-full items-start justify-around bg-[var(--surface-2)] px-4 pb-[var(--safe-bottom)] pt-[10px]">
       <button
         aria-label="Mail"
         className="relative grid h-8 w-[72px] place-items-center rounded-[18px] bg-[var(--selected-nav)] text-[#cfe8ff]"
@@ -1803,7 +1814,7 @@ function NavigationDrawer({
       />
       <aside
         className={classNames(
-          "font-google-sans absolute left-0 top-0 h-full w-[78vw] overflow-y-auto bg-[var(--drawer)] pb-8 pt-[calc(68px+env(safe-area-inset-top))] shadow-[18px_0_28px_rgba(0,0,0,0.42)] transition-transform duration-200",
+          "font-google-sans absolute left-0 top-0 h-full w-[78vw] overflow-y-auto bg-[var(--drawer)] pb-8 pt-[calc(68px+var(--safe-top))] shadow-[18px_0_28px_rgba(0,0,0,0.42)] transition-transform duration-200",
           open ? "translate-x-0" : "-translate-x-full",
         )}
       >

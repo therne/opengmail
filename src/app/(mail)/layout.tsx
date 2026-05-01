@@ -6,7 +6,7 @@ export default function MailLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <main className="h-dvh overflow-hidden bg-[var(--bg)] text-[var(--text)]">
+    <main className="h-full overflow-hidden bg-[var(--bg)] text-[var(--text)]">
       <GmailShell>{children}</GmailShell>
     </main>
   );
