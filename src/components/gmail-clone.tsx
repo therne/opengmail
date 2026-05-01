@@ -196,9 +196,18 @@ function classNames(...values: Array<string | false | undefined>) {
 
 function syncAppViewport() {
   const viewport = window.visualViewport;
-  const height = viewport?.height ?? window.innerHeight;
+  const documentElement = document.documentElement;
+  const standalone =
+    window.matchMedia("(display-mode: standalone)").matches ||
+    Boolean((window.navigator as Navigator & { standalone?: boolean }).standalone);
+  const height = Math.max(
+    viewport?.height ?? 0,
+    window.innerHeight,
+    documentElement.clientHeight,
+    standalone ? window.screen.height : 0,
+  );
 
-  document.documentElement.style.setProperty("--app-height", `${height}px`);
+  documentElement.style.setProperty("--app-height", `${Math.ceil(height)}px`);
 }
 
 async function readApiJson<T>(response: Response, fallbackMessage: string) {
@@ -364,12 +373,187 @@ function mailBodyHtml(message: MailMessage) {
   return source;
 }
 
+type RgbaColor = {
+  a: number;
+  b: number;
+  g: number;
+  r: number;
+};
+
+const emailDarkSurface = "#202124";
+const emailDarkText = "#e8eaed";
+const emailDarkMutedText = "#c4c7c5";
+const emailDarkBorder = "#3c4043";
+const emailDarkLink = "#c2d7ff";
+
+const emailBackgroundTags = new Set([
+  "article",
+  "blockquote",
+  "body",
+  "center",
+  "div",
+  "main",
+  "section",
+  "table",
+  "tbody",
+  "td",
+  "tfoot",
+  "th",
+  "thead",
+  "tr",
+]);
+
+const emailTextTags = new Set([
+  "a",
+  "b",
+  "blockquote",
+  "center",
+  "div",
+  "em",
+  "font",
+  "h1",
+  "h2",
+  "h3",
+  "h4",
+  "h5",
+  "h6",
+  "i",
+  "li",
+  "p",
+  "span",
+  "strong",
+  "td",
+  "th",
+]);
+
+function parseRgbColor(value: string): RgbaColor | null {
+  if (!value || value === "transparent") {
+    return null;
+  }
+
+  const match = value.match(
+    /^rgba?\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)(?:\s*,\s*([\d.]+))?\s*\)$/i,
+  );
+  if (!match) {
+    return null;
+  }
+
+  return {
+    r: Number(match[1]),
+    g: Number(match[2]),
+    b: Number(match[3]),
+    a: match[4] === undefined ? 1 : Number(match[4]),
+  };
+}
+
+function srgbChannel(value: number) {
+  const normalized = value / 255;
+  return normalized <= 0.03928
+    ? normalized / 12.92
+    : ((normalized + 0.055) / 1.055) ** 2.4;
+}
+
+function relativeLuminance(color: RgbaColor) {
+  return (
+    0.2126 * srgbChannel(color.r) +
+    0.7152 * srgbChannel(color.g) +
+    0.0722 * srgbChannel(color.b)
+  );
+}
+
+function contrastRatio(first: RgbaColor, second: RgbaColor) {
+  const firstLuminance = relativeLuminance(first);
+  const secondLuminance = relativeLuminance(second);
+  const lighter = Math.max(firstLuminance, secondLuminance);
+  const darker = Math.min(firstLuminance, secondLuminance);
+  return (lighter + 0.05) / (darker + 0.05);
+}
+
+function hasDirectText(element: HTMLElement) {
+  for (const node of element.childNodes) {
+    if (node.nodeType === Node.TEXT_NODE && node.textContent?.trim()) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function declaresStyle(element: HTMLElement, pattern: RegExp) {
+  return pattern.test(element.getAttribute("style") ?? "");
+}
+
+function applyEmailDarkMode(doc: Document) {
+  const win = doc.defaultView;
+  const body = doc.body;
+  if (!win || !body) {
+    return;
+  }
+
+  doc.documentElement.style.setProperty("color-scheme", "dark", "important");
+  body.style.setProperty("background-color", "transparent", "important");
+  body.style.setProperty("color", emailDarkText, "important");
+
+  const darkSurfaceColor: RgbaColor = { r: 32, g: 33, b: 36, a: 1 };
+  const nodes = [body, ...Array.from(body.querySelectorAll<HTMLElement>("*"))];
+
+  for (const element of nodes) {
+    const tagName = element.tagName.toLowerCase();
+    const computed = win.getComputedStyle(element);
+    const background = parseRgbColor(computed.backgroundColor);
+    const textColor = parseRgbColor(computed.color);
+    const hasBgAttribute = element.hasAttribute("bgcolor");
+    const hasInlineBackground = declaresStyle(element, /background/i);
+    const isBackgroundElement = emailBackgroundTags.has(tagName);
+
+    element.style.setProperty("color-scheme", "dark", "important");
+
+    if (hasBgAttribute) {
+      element.setAttribute("bgcolor", emailDarkSurface);
+    }
+
+    if (
+      isBackgroundElement &&
+      (hasBgAttribute ||
+        hasInlineBackground ||
+        (background && background.a > 0 && relativeLuminance(background) > 0.28))
+    ) {
+      element.style.setProperty("background-color", emailDarkSurface, "important");
+    }
+
+    if (tagName === "body") {
+      element.style.setProperty("background-color", "transparent", "important");
+    }
+
+    if (tagName === "a") {
+      element.style.setProperty("color", emailDarkLink, "important");
+    } else if (
+      emailTextTags.has(tagName) &&
+      (hasDirectText(element) || declaresStyle(element, /color/i))
+    ) {
+      const lowContrast =
+        !textColor || textColor.a === 0 || contrastRatio(textColor, darkSurfaceColor) < 4.5;
+      const tooDark = Boolean(textColor && relativeLuminance(textColor) < 0.55);
+      element.style.setProperty(
+        "color",
+        lowContrast || tooDark ? emailDarkText : emailDarkMutedText,
+        "important",
+      );
+    }
+
+    const borderColor = parseRgbColor(computed.borderTopColor);
+    if (borderColor && borderColor.a > 0 && relativeLuminance(borderColor) > 0.38) {
+      element.style.setProperty("border-color", emailDarkBorder, "important");
+    }
+  }
+}
+
 function iframeBodyHtml(html: string) {
   return `<!doctype html>
 <html>
   <head>
     <meta charset="utf-8" />
-    <meta name="color-scheme" content="dark" />
+    <meta name="color-scheme" content="dark only" />
+    <meta name="supported-color-schemes" content="dark" />
     <style>
       * { box-sizing: border-box; }
       html, body {
@@ -384,9 +568,24 @@ function iframeBodyHtml(html: string) {
         -webkit-font-smoothing: antialiased;
       }
       body { padding: 0; overflow-y: hidden; }
+      body, table, tbody, thead, tfoot, tr, td, th, div, section, article, main, center, blockquote {
+        border-color: ${emailDarkBorder} !important;
+        color-scheme: dark !important;
+      }
       body, body * {
         max-width: 100% !important;
         min-width: 0 !important;
+      }
+      body [bgcolor],
+      body [style*="background"],
+      body [style*="BACKGROUND"],
+      body [style*="background-color"],
+      body [style*="BACKGROUND-COLOR"] {
+        background-color: ${emailDarkSurface} !important;
+      }
+      body [style*="color"],
+      body [style*="COLOR"] {
+        color: ${emailDarkText} !important;
       }
       body :where(p, div, span, td, th, li, h1, h2, h3, h4, h5, h6, strong, em, center, font, blockquote, section, article) {
         color: #e8eaed !important;
@@ -438,6 +637,7 @@ function EmailBodyFrame({ html }: { html: string }) {
     if (!doc) {
       return;
     }
+    applyEmailDarkMode(doc);
     const body = doc.body;
     const documentElement = doc.documentElement;
     if (!body || !documentElement) {
@@ -1465,7 +1665,7 @@ function InboxView({
 
       <button
         aria-label="Compose"
-        className="font-google-sans absolute bottom-[calc(68px+var(--safe-bottom))] right-5 z-20 flex h-14 items-center justify-center gap-x-2 rounded-2xl bg-[var(--compose-blue)] px-4 text-base font-semibold text-white shadow-xl active:scale-[0.98]"
+        className="font-google-sans fixed bottom-[calc(68px+var(--safe-bottom))] right-5 z-20 flex h-14 items-center justify-center gap-x-2 rounded-2xl bg-[var(--compose-blue)] px-4 text-base font-semibold text-white shadow-xl active:scale-[0.98]"
         onClick={onCompose}
         type="button"
       >
@@ -1636,7 +1836,7 @@ function ThreadView({
         </div>
       </div>
 
-      <div className="absolute bottom-[calc(52px+var(--safe-bottom))] left-0 right-0 z-20 mx-auto flex items-center gap-2 bg-[var(--bg)] px-4 py-2">
+      <div className="fixed bottom-[calc(52px+var(--safe-bottom))] left-0 right-0 z-20 mx-auto flex items-center gap-2 bg-[var(--bg)] px-4 py-2">
         <button
           aria-label="Reply"
           className="grid h-12 w-12 shrink-0 place-items-center rounded-full border border-[#3c4043] bg-[var(--bg)] text-[var(--text-soft)] active:bg-white/5"
@@ -1757,7 +1957,7 @@ function ThreadMessage({
 
 function BottomNav() {
   return (
-    <nav className="absolute bottom-0 left-0 z-10 flex h-[calc(52px+var(--safe-bottom))] w-full items-start justify-around bg-[var(--surface-2)] px-4 pb-[var(--safe-bottom)] pt-[10px]">
+    <nav className="fixed bottom-0 left-0 z-10 flex h-[calc(52px+var(--safe-bottom))] w-full items-start justify-around bg-[var(--surface-2)] px-4 pb-[var(--safe-bottom)] pt-[10px]">
       <button
         aria-label="Mail"
         className="relative grid h-8 w-[72px] place-items-center rounded-[18px] bg-[var(--selected-nav)] text-[#cfe8ff]"
@@ -1814,8 +2014,10 @@ function NavigationDrawer({
       />
       <aside
         className={classNames(
-          "font-google-sans absolute left-0 top-0 h-full w-[78vw] overflow-y-auto bg-[var(--drawer)] pb-8 pt-[calc(68px+var(--safe-top))] shadow-[18px_0_28px_rgba(0,0,0,0.42)] transition-transform duration-200",
-          open ? "translate-x-0" : "-translate-x-full",
+          "font-google-sans absolute left-0 top-0 h-full w-[78vw] overflow-y-auto bg-[var(--drawer)] pb-8 pt-[calc(68px+var(--safe-top))] transition duration-200",
+          open
+            ? "visible translate-x-0 opacity-100 shadow-[18px_0_28px_rgba(0,0,0,0.42)]"
+            : "invisible -translate-x-[calc(100%+48px)] opacity-0 shadow-none",
         )}
       >
         <div className="flex h-[49px] items-center gap-2.5 border-b border-[var(--divider)] px-6">
