@@ -194,6 +194,13 @@ function classNames(...values: Array<string | false | undefined>) {
   return values.filter(Boolean).join(" ");
 }
 
+function syncAppViewport() {
+  const viewport = window.visualViewport;
+  const height = viewport?.height ?? window.innerHeight;
+
+  document.documentElement.style.setProperty("--app-height", `${height}px`);
+}
+
 async function readApiJson<T>(response: Response, fallbackMessage: string) {
   const text = await response.text();
   let payload: unknown = null;
@@ -644,6 +651,21 @@ export function GmailShell({ children }: { children: ReactNode }) {
   const selectedMessage =
     selectedThread?.find((item) => item.id === selectedMessageId) ?? selectedThread?.[0];
 
+  useEffect(() => {
+    syncAppViewport();
+
+    const viewport = window.visualViewport;
+    window.addEventListener("resize", syncAppViewport);
+    viewport?.addEventListener("resize", syncAppViewport);
+    viewport?.addEventListener("scroll", syncAppViewport);
+
+    return () => {
+      window.removeEventListener("resize", syncAppViewport);
+      viewport?.removeEventListener("resize", syncAppViewport);
+      viewport?.removeEventListener("scroll", syncAppViewport);
+    };
+  }, []);
+
   const loadSession = useCallback(async () => {
     try {
       const response = await fetch("/api/auth/session", { cache: "no-store" });
@@ -927,7 +949,7 @@ export function GmailShell({ children }: { children: ReactNode }) {
 
   return (
     <GmailContext.Provider value={value}>
-      <div className="relative h-dvh w-full overflow-hidden bg-[var(--bg)] text-[var(--text)]">
+      <div className="app-shell relative w-full overflow-hidden bg-[var(--bg)] text-[var(--text)]">
         <div className="relative h-full w-full overflow-hidden bg-[var(--bg)]">
           {children}
         </div>
