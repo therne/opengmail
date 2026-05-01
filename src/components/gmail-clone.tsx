@@ -80,24 +80,6 @@ type CachedContactProfile = {
   name?: string;
 };
 
-type ViewportDebugMetrics = {
-  appBottom: number;
-  appHeight: number;
-  bodyHeight: number;
-  clientHeight: number;
-  displayMode: string;
-  innerHeight: number;
-  navBottom: number;
-  navHeight: number;
-  navToViewportBottom: number;
-  safeBottom: string;
-  screenHeight: number;
-  standalone: boolean;
-  vvHeight?: number;
-  vvOffsetTop?: number;
-  vvPageTop?: number;
-};
-
 const CONTACT_CACHE_KEY = "gmail_clone_contact_profiles_v1";
 const CONTACT_CACHE_LIMIT = 500;
 const SEARCH_HISTORY_KEY = "gmail_clone_search_history_v1";
@@ -210,62 +192,6 @@ const materialIconPaths: Record<string, string[]> = {
 
 function classNames(...values: Array<string | false | undefined>) {
   return values.filter(Boolean).join(" ");
-}
-
-function readViewportDebugMetrics(): ViewportDebugMetrics {
-  const rootStyle = getComputedStyle(document.documentElement);
-  const navRect = document.querySelector("[data-bottom-nav]")?.getBoundingClientRect();
-  const appRect = document.querySelector(".app-shell")?.getBoundingClientRect();
-  const modes = ["fullscreen", "standalone", "minimal-ui", "browser"];
-  const displayMode =
-    modes.find((mode) => window.matchMedia(`(display-mode: ${mode})`).matches) ?? "unknown";
-
-  return {
-    appBottom: Math.round(appRect?.bottom ?? 0),
-    appHeight: Math.round(appRect?.height ?? 0),
-    bodyHeight: Math.round(document.body.getBoundingClientRect().height),
-    clientHeight: document.documentElement.clientHeight,
-    displayMode,
-    innerHeight: window.innerHeight,
-    navBottom: Math.round(navRect?.bottom ?? 0),
-    navHeight: Math.round(navRect?.height ?? 0),
-    navToViewportBottom: Math.round(window.innerHeight - (navRect?.bottom ?? 0)),
-    safeBottom: rootStyle.getPropertyValue("--safe-bottom").trim(),
-    screenHeight: window.screen.height,
-    standalone: Boolean((window.navigator as Navigator & { standalone?: boolean }).standalone),
-    vvHeight: window.visualViewport ? Math.round(window.visualViewport.height) : undefined,
-    vvOffsetTop: window.visualViewport ? Math.round(window.visualViewport.offsetTop) : undefined,
-    vvPageTop: window.visualViewport ? Math.round(window.visualViewport.pageTop) : undefined,
-  };
-}
-
-function ViewportDebugOverlay() {
-  const [metrics, setMetrics] = useState<ViewportDebugMetrics | null>(null);
-
-  useEffect(() => {
-    const update = () => setMetrics(readViewportDebugMetrics());
-    update();
-    window.addEventListener("resize", update);
-    window.visualViewport?.addEventListener("resize", update);
-    window.visualViewport?.addEventListener("scroll", update);
-    const interval = window.setInterval(update, 500);
-    return () => {
-      window.clearInterval(interval);
-      window.removeEventListener("resize", update);
-      window.visualViewport?.removeEventListener("resize", update);
-      window.visualViewport?.removeEventListener("scroll", update);
-    };
-  }, []);
-
-  if (!metrics) {
-    return null;
-  }
-
-  return (
-    <pre className="fixed bottom-24 left-2 z-[999] max-w-[92vw] rounded bg-black/85 p-2 text-[11px] leading-4 text-white">
-      {JSON.stringify(metrics, null, 2)}
-    </pre>
-  );
 }
 
 async function readApiJson<T>(response: Response, fallbackMessage: string) {
@@ -951,6 +877,7 @@ export function GmailShell({ children }: { children: ReactNode }) {
       }
       if (options?.q) {
         params.set("q", options.q);
+        params.set("limit", "10");
       }
 
       const path = options?.q ? "/api/search" : "/api/messages";
@@ -1238,7 +1165,6 @@ export function GmailShell({ children }: { children: ReactNode }) {
         </div>
         {pathname === "/search" ? null : <BottomNav />}
         <NavigationDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} />
-        <ViewportDebugOverlay />
       </div>
     </GmailContext.Provider>
   );
@@ -1330,15 +1256,14 @@ export function SearchRoute() {
     return undefined;
   }, [activeQuery]);
 
-  const updateQuery = useCallback(
+  const commitQuery = useCallback(
     (value: string) => {
-      setQuery(value);
       const trimmed = value.trim();
       router.replace(trimmed ? `/search?q=${encodeURIComponent(trimmed)}` : "/search", {
         scroll: false,
       });
     },
-    [router, setQuery],
+    [router],
   );
 
   return (
@@ -1359,13 +1284,15 @@ export function SearchRoute() {
       onOpen={openMessage}
       onBack={() => router.push("/")}
       onHistorySelect={(value) => {
+        setQuery(value);
         setHistory(addSearchHistoryItem(value));
-        updateQuery(value);
+        commitQuery(value);
       }}
-      onQueryChange={updateQuery}
+      onQueryChange={setQuery}
       onSearchSubmit={(value) => {
+        setQuery(value);
         setHistory(addSearchHistoryItem(value));
-        updateQuery(value);
+        commitQuery(value);
       }}
     />
   );
@@ -1795,7 +1722,7 @@ function MessageRow({
         >
           {highlightedText(message.subject, highlightQuery)}
         </div>
-        <div className="line-clamp-1 text-sm font-medium leading-5 text-[var(--text-soft)]">
+        <div className="overflow-hidden text-ellipsis whitespace-nowrap text-sm font-medium leading-5 text-[var(--text-soft)]">
           {highlightedText(preview, highlightQuery)}
           {searchResult ? (
             <span className="ml-1 inline-flex translate-y-[-1px] rounded-md border border-[var(--outline)] px-1.5 text-sm font-medium leading-[18px] text-[var(--text-muted)]">

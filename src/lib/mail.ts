@@ -187,6 +187,16 @@ async function getGmailMessage(gmail: gmail_v1.Gmail, id: string) {
   return data;
 }
 
+async function getGmailMessageSummary(gmail: gmail_v1.Gmail, id: string) {
+  const { data } = await gmail.users.messages.get({
+    userId: "me",
+    id,
+    format: "metadata",
+    metadataHeaders: ["From", "Subject", "Date"],
+  });
+  return data;
+}
+
 export async function listMail(session: AuthSession | null, options: MailListOptions = {}): Promise<MailListResult> {
   const limit = maxResults(options.maxResults);
   const fakeMessages = options.pageToken ? [] : getFakeMailSummaries(options.query);
@@ -208,7 +218,7 @@ export async function listMail(session: AuthSession | null, options: MailListOpt
       });
 
       const ids = data.messages?.map((message) => message.id).filter((id): id is string => Boolean(id)) ?? [];
-      gmailMessages = await Promise.all(ids.map(async (id) => gmailSummary(await getGmailMessage(gmail, id))));
+      gmailMessages = await Promise.all(ids.map(async (id) => gmailSummary(await getGmailMessageSummary(gmail, id))));
       nextPageToken = data.nextPageToken ?? undefined;
       resultSizeEstimate += data.resultSizeEstimate ?? gmailMessages.length;
     } catch (error) {
