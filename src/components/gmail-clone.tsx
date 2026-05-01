@@ -1681,7 +1681,7 @@ function InboxView({
 
       <button
         aria-label="Compose"
-        className="font-google-sans fixed bottom-[calc(68px+var(--safe-bottom))] right-5 z-20 flex h-14 items-center justify-center gap-x-2 rounded-2xl bg-[var(--compose-blue)] px-4 text-base font-semibold text-white shadow-xl active:scale-[0.98]"
+        className="font-google-sans absolute bottom-[calc(68px+var(--safe-bottom))] right-5 z-20 flex h-14 items-center justify-center gap-x-2 rounded-2xl bg-[var(--compose-blue)] px-4 text-base font-semibold text-white shadow-xl active:scale-[0.98]"
         onClick={onCompose}
         type="button"
       >
@@ -1852,7 +1852,7 @@ function ThreadView({
         </div>
       </div>
 
-      <div className="fixed bottom-[calc(52px+var(--safe-bottom))] left-0 right-0 z-20 mx-auto flex items-center gap-2 bg-[var(--bg)] px-4 py-2">
+      <div className="absolute bottom-[calc(52px+var(--safe-bottom))] left-0 right-0 z-20 mx-auto flex items-center gap-2 bg-[var(--bg)] px-4 py-2">
         <button
           aria-label="Reply"
           className="grid h-12 w-12 shrink-0 place-items-center rounded-full border border-[#3c4043] bg-[var(--bg)] text-[var(--text-soft)] active:bg-white/5"
@@ -1973,7 +1973,7 @@ function ThreadMessage({
 
 function BottomNav() {
   return (
-    <nav className="bottom-nav fixed left-0 z-10 flex w-full items-start justify-around bg-[var(--surface-2)] px-4 pt-[10px]">
+    <nav className="absolute bottom-0 left-0 z-10 flex h-[calc(52px+var(--safe-bottom))] w-full items-start justify-around bg-[var(--surface-2)] px-4 pb-[var(--safe-bottom)] pt-[10px]">
       <button
         aria-label="Mail"
         className="relative grid h-8 w-[72px] place-items-center rounded-[18px] bg-[var(--selected-nav)] text-[#cfe8ff]"
