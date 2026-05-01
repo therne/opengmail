@@ -17,6 +17,7 @@ export const metadata: Metadata = {
   description: "A mobile Gmail reader PWA with Gmail API and fake mail blending.",
   appleWebApp: {
     capable: true,
+    statusBarStyle: "black-translucent",
     title: "Gmail",
   },
   applicationName: "Gmail",
