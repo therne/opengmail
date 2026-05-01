@@ -70,6 +70,11 @@ type RawMailMessage = Partial<MailMessage> & {
   thread?: RawMailMessage[];
 };
 
+type ApiErrorPayload = {
+  error?: string;
+  message?: string;
+};
+
 type CachedContactProfile = {
   avatarUrl?: string;
   name?: string;
@@ -187,6 +192,33 @@ const materialIconPaths: Record<string, string[]> = {
 
 function classNames(...values: Array<string | false | undefined>) {
   return values.filter(Boolean).join(" ");
+}
+
+async function readApiJson<T>(response: Response, fallbackMessage: string) {
+  const text = await response.text();
+  let payload: unknown = null;
+
+  if (text) {
+    try {
+      payload = JSON.parse(text);
+    } catch {
+      if (!response.ok) {
+        throw new Error(fallbackMessage);
+      }
+      throw new Error("Mail API returned invalid JSON.");
+    }
+  }
+
+  if (!response.ok) {
+    const errorPayload = payload as ApiErrorPayload | null;
+    throw new Error(errorPayload?.error ?? errorPayload?.message ?? fallbackMessage);
+  }
+
+  if (!payload || typeof payload !== "object") {
+    throw new Error(fallbackMessage);
+  }
+
+  return payload as T;
 }
 
 function icon(name: string, className?: string) {
@@ -648,10 +680,10 @@ export function GmailShell({ children }: { children: ReactNode }) {
         const response = await fetch(`${path}?${params.toString()}`, {
           cache: "no-store",
         });
-        const payload = (await response.json()) as MailListPayload;
-        if (!response.ok) {
-          throw new Error("Unable to load mail.");
-        }
+        const payload = await readApiJson<MailListPayload>(
+          response,
+          "Unable to load mail.",
+        );
         const nextMessages = (payload.messages ?? payload.items ?? []).map(
           normalizeMessage,
         );
@@ -745,12 +777,9 @@ export function GmailShell({ children }: { children: ReactNode }) {
       const response = await fetch(`/api/messages/${encodeURIComponent(messageId)}`, {
         cache: "no-store",
       });
-      if (!response.ok) {
-        return;
-      }
-      const payload = (await response.json()) as ThreadPayload & {
+      const payload = await readApiJson<ThreadPayload & {
         message?: RawMailMessage;
-      };
+      }>(response, "Unable to load message detail.");
       const detail = payload.message;
       const rawThread = (payload.thread ??
         payload.messages ??

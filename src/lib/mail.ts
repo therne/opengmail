@@ -197,19 +197,23 @@ export async function listMail(session: AuthSession | null, options: MailListOpt
   const auth = authClient(session);
 
   if (auth) {
-    const gmail = gmailClient(auth);
-    const { data } = await gmail.users.messages.list({
-      userId: "me",
-      maxResults: limit,
-      pageToken: options.pageToken,
-      q: options.query,
-      includeSpamTrash: false,
-    });
+    try {
+      const gmail = gmailClient(auth);
+      const { data } = await gmail.users.messages.list({
+        userId: "me",
+        maxResults: limit,
+        pageToken: options.pageToken,
+        q: options.query,
+        includeSpamTrash: false,
+      });
 
-    const ids = data.messages?.map((message) => message.id).filter((id): id is string => Boolean(id)) ?? [];
-    gmailMessages = await Promise.all(ids.map(async (id) => gmailSummary(await getGmailMessage(gmail, id))));
-    nextPageToken = data.nextPageToken ?? undefined;
-    resultSizeEstimate += data.resultSizeEstimate ?? gmailMessages.length;
+      const ids = data.messages?.map((message) => message.id).filter((id): id is string => Boolean(id)) ?? [];
+      gmailMessages = await Promise.all(ids.map(async (id) => gmailSummary(await getGmailMessage(gmail, id))));
+      nextPageToken = data.nextPageToken ?? undefined;
+      resultSizeEstimate += data.resultSizeEstimate ?? gmailMessages.length;
+    } catch (error) {
+      console.error("Unable to read Gmail messages.", error);
+    }
   }
 
   const messages = await enrichMessageContactProfiles(
