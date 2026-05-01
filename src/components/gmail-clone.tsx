@@ -10,6 +10,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import "@material/web/button/filled-button.js";
 import "@material/web/button/filled-tonal-button.js";
@@ -909,7 +910,6 @@ export function GmailShell({ children }: { children: ReactNode }) {
 }
 
 export function InboxRoute() {
-  const router = useRouter();
   const {
     activeQuery,
     avatar,
@@ -925,7 +925,6 @@ export function InboxRoute() {
     query,
     resetInbox,
     session,
-    setQuery,
   } = useGmail();
 
   useEffect(() => {
@@ -942,7 +941,6 @@ export function InboxRoute() {
       loadingMore={loadingMore}
       messages={messages}
       nextPageToken={nextPageToken}
-      query=""
       session={session}
       avatar={avatar}
       onCompose={() => undefined}
@@ -953,12 +951,6 @@ export function InboxRoute() {
       onLogout={logout}
       onLoadMore={loadMore}
       onOpen={openMessage}
-      onQueryChange={(value) => {
-        setQuery(value);
-        if (value.trim()) {
-          router.push(`/search?q=${encodeURIComponent(value.trim())}`);
-        }
-      }}
     />
   );
 }
@@ -1293,8 +1285,6 @@ function InboxView({
   onLogin,
   onLogout,
   onOpen,
-  onQueryChange,
-  query,
   session,
 }: {
   activeQuery: string;
@@ -1303,7 +1293,6 @@ function InboxView({
   loadingMore: boolean;
   messages: MailMessage[];
   nextPageToken?: string;
-  query: string;
   session: SessionPayload | null;
   avatar: (message?: MailMessage, size?: string) => React.ReactNode;
   onCompose: () => void;
@@ -1312,7 +1301,6 @@ function InboxView({
   onLogin: () => void;
   onLogout: () => void;
   onOpen: (message: MailMessage) => void;
-  onQueryChange: (value: string) => void;
 }) {
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
 
@@ -1347,23 +1335,13 @@ function InboxView({
           >
             {icon("menu", "text-[28px]")}
           </button>
-          <input
+          <Link
             aria-label="Search in mail"
-            className="font-google-sans min-w-0 flex-1 bg-transparent text-xl font-normal text-[var(--text)] outline-none placeholder:text-[var(--text-soft)]"
-            placeholder="Search in mail"
-            value={query}
-            onChange={(event) => onQueryChange(event.target.value)}
-          />
-          {query ? (
-            <button
-              aria-label="Clear search"
-              className="mr-2 grid h-9 w-9 place-items-center text-[var(--text-muted)]"
-              onClick={() => onQueryChange("")}
-              type="button"
-            >
-              {icon("close", "text-[22px]")}
-            </button>
-          ) : null}
+            className="font-google-sans flex h-full min-w-0 flex-1 items-center text-xl font-normal text-[var(--text-soft)] outline-none"
+            href="/search"
+          >
+            <span className="truncate">Search in mail</span>
+          </Link>
           <button
             aria-label={session?.authenticated ? "Sign out" : "Sign in"}
             className="grid h-[30px] w-[30px] place-items-center overflow-hidden rounded-full"
