@@ -1193,9 +1193,9 @@ function SearchView({
   }, [loading, loadingMore, nextPageToken, onLoadMore, showHistory]);
 
   return (
-    <div className="relative h-full overflow-x-hidden overflow-y-auto overscroll-contain pb-[env(safe-area-inset-bottom)]">
+    <div className="relative h-full overflow-hidden">
       <form
-        className="sticky top-0 z-30 flex h-[calc(70px+env(safe-area-inset-top))] items-center border-b border-[var(--divider)] bg-neutral-800 px-3 pt-[env(safe-area-inset-top)]"
+        className="absolute left-0 right-0 top-0 z-30 flex h-[calc(70px+env(safe-area-inset-top))] items-center border-b border-[var(--divider)] bg-neutral-800 px-3 pt-[env(safe-area-inset-top)]"
         onSubmit={(event) => {
           event.preventDefault();
           onSearchSubmit(query);
@@ -1247,77 +1247,79 @@ function SearchView({
         )}
       </form>
 
-      {showHistory ? (
-        <section className="px-5 pt-7">
-          <div className="text-xs font-semibold tracking-widest text-[var(--text-soft)]">
-            Recent mail searches
-          </div>
-          <div className="pt-5">
-            {history.length === 0 ? (
-              <div className="py-10 text-center text-sm text-[var(--text-muted)]">
-                No recent searches.
-              </div>
-            ) : (
-              history.slice(0, 6).map((item) => (
-                <button
-                  className="grid h-[66px] w-full grid-cols-[56px_1fr] items-center text-left text-[21px] leading-7 text-[var(--text)] active:bg-white/5"
-                  key={item}
-                  onClick={() => onHistorySelect(item)}
-                  type="button"
-                >
-                  <span className="grid h-10 w-10 place-items-center rounded-full bg-[#3f4244] text-[var(--text-soft)]">
-                    {icon("history", "text-[24px]")}
-                  </span>
-                  <span className="truncate pl-3">{item}</span>
-                </button>
-              ))
-            )}
-          </div>
-        </section>
-      ) : (
-        <>
-          <div className="px-5 pt-6 text-xs font-semibold tracking-widest text-[var(--text-soft)]">
-            All results in mail
-          </div>
-          <div className="pt-4">
-            {loading ? (
-              <div className="grid h-[42vh] place-items-center text-[var(--text-muted)]">
-                <md-circular-progress indeterminate />
-              </div>
-            ) : error ? (
-              <div className="px-8 py-12 text-center text-[var(--text-muted)]">
-                <p>{error}</p>
-                <md-filled-button onClick={onLogin}>Sign in with Google</md-filled-button>
-              </div>
-            ) : messages.length === 0 ? (
-              <div className="px-8 py-16 text-center text-[var(--text-muted)]">
-                No mail found.
-              </div>
-            ) : (
-              messages.map((message) => (
-                <MessageRow
-                  avatar={avatar}
-                  highlightQuery={resultQuery}
-                  key={`${message.source}:${message.id}`}
-                  message={message}
-                  searchResult
-                  onOpen={onOpen}
-                />
-              ))
-            )}
-          </div>
-
-          {nextPageToken ? (
-            <div
-              aria-hidden
-              className="grid min-h-16 place-items-center py-4 text-[var(--text-muted)]"
-              ref={loadMoreRef}
-            >
-              {loadingMore ? <md-circular-progress indeterminate /> : null}
+      <div className="absolute inset-0 overflow-x-hidden overflow-y-auto overscroll-contain pb-[env(safe-area-inset-bottom)] pt-[calc(70px+env(safe-area-inset-top))]">
+        {showHistory ? (
+          <section className="px-5 pt-7">
+            <div className="text-xs font-semibold tracking-widest text-[var(--text-soft)]">
+              Recent mail searches
             </div>
-          ) : null}
-        </>
-      )}
+            <div className="pt-5">
+              {history.length === 0 ? (
+                <div className="py-10 text-center text-sm text-[var(--text-muted)]">
+                  No recent searches.
+                </div>
+              ) : (
+                history.slice(0, 6).map((item) => (
+                  <button
+                    className="grid h-[66px] w-full grid-cols-[56px_1fr] items-center text-left text-[21px] leading-7 text-[var(--text)] active:bg-white/5"
+                    key={item}
+                    onClick={() => onHistorySelect(item)}
+                    type="button"
+                  >
+                    <span className="grid h-10 w-10 place-items-center rounded-full bg-[#3f4244] text-[var(--text-soft)]">
+                      {icon("history", "text-[24px]")}
+                    </span>
+                    <span className="truncate pl-3">{item}</span>
+                  </button>
+                ))
+              )}
+            </div>
+          </section>
+        ) : (
+          <>
+            <div className="px-5 pt-6 text-xs font-semibold tracking-widest text-[var(--text-soft)]">
+              All results in mail
+            </div>
+            <div className="pt-4">
+              {loading ? (
+                <div className="grid h-[42vh] place-items-center text-[var(--text-muted)]">
+                  <md-circular-progress indeterminate />
+                </div>
+              ) : error ? (
+                <div className="px-8 py-12 text-center text-[var(--text-muted)]">
+                  <p>{error}</p>
+                  <md-filled-button onClick={onLogin}>Sign in with Google</md-filled-button>
+                </div>
+              ) : messages.length === 0 ? (
+                <div className="px-8 py-16 text-center text-[var(--text-muted)]">
+                  No mail found.
+                </div>
+              ) : (
+                messages.map((message) => (
+                  <MessageRow
+                    avatar={avatar}
+                    highlightQuery={resultQuery}
+                    key={`${message.source}:${message.id}`}
+                    message={message}
+                    searchResult
+                    onOpen={onOpen}
+                  />
+                ))
+              )}
+            </div>
+
+            {nextPageToken ? (
+              <div
+                aria-hidden
+                className="grid min-h-16 place-items-center py-4 text-[var(--text-muted)]"
+                ref={loadMoreRef}
+              >
+                {loadingMore ? <md-circular-progress indeterminate /> : null}
+              </div>
+            ) : null}
+          </>
+        )}
+      </div>
     </div>
   );
 }
@@ -1375,8 +1377,8 @@ function InboxView({
   }, [loading, loadingMore, nextPageToken, onLoadMore]);
 
   return (
-    <div className="relative h-full overflow-x-hidden overflow-y-auto overscroll-contain pb-[calc(132px+env(safe-area-inset-bottom))]">
-      <div className="sticky top-0 z-30 bg-[var(--bg)] px-4 pb-3 pt-[calc(13px+env(safe-area-inset-top))]">
+    <div className="relative h-full overflow-hidden">
+      <div className="absolute left-0 right-0 top-0 z-30 bg-[var(--bg)] px-4 pb-3 pt-[calc(13px+env(safe-area-inset-top))]">
         <div className="flex h-[56px] items-center rounded-[28px] bg-[var(--surface)] px-4">
           <button
             aria-label="Open menu"
@@ -1408,49 +1410,51 @@ function InboxView({
         </div>
       </div>
 
-      <div className="px-4 pt-4 text-xs font-semibold tracking-widest text-[var(--text-soft)]">
-        {activeQuery ? "Search results" : "All inboxes"}
-      </div>
-
-      <div className="pt-5">
-        {loading ? (
-          <div className="grid h-[42vh] place-items-center text-[var(--text-muted)]">
-            <md-circular-progress indeterminate />
-          </div>
-        ) : error ? (
-          <div className="px-8 py-12 text-center text-[var(--text-muted)]">
-            <p>{error}</p>
-            <md-filled-button onClick={onLogin}>Sign in with Google</md-filled-button>
-          </div>
-        ) : messages.length === 0 ? (
-          <div className="px-8 py-16 text-center text-[var(--text-muted)]">
-            No mail found.
-          </div>
-        ) : (
-          messages.map((message) => (
-            <MessageRow
-              key={`${message.source}:${message.id}`}
-              message={message}
-              avatar={avatar}
-              onOpen={onOpen}
-            />
-          ))
-        )}
-      </div>
-
-      {nextPageToken ? (
-        <div
-          aria-hidden
-          className="grid min-h-16 place-items-center py-4 text-[var(--text-muted)]"
-          ref={loadMoreRef}
-        >
-          {loadingMore ? <md-circular-progress indeterminate /> : null}
+      <div className="absolute inset-0 overflow-x-hidden overflow-y-auto overscroll-contain pb-[calc(132px+env(safe-area-inset-bottom))] pt-[calc(88px+env(safe-area-inset-top))]">
+        <div className="px-4 pt-4 text-xs font-semibold tracking-widest text-[var(--text-soft)]">
+          {activeQuery ? "Search results" : "All inboxes"}
         </div>
-      ) : null}
+
+        <div className="pt-5">
+          {loading ? (
+            <div className="grid h-[42vh] place-items-center text-[var(--text-muted)]">
+              <md-circular-progress indeterminate />
+            </div>
+          ) : error ? (
+            <div className="px-8 py-12 text-center text-[var(--text-muted)]">
+              <p>{error}</p>
+              <md-filled-button onClick={onLogin}>Sign in with Google</md-filled-button>
+            </div>
+          ) : messages.length === 0 ? (
+            <div className="px-8 py-16 text-center text-[var(--text-muted)]">
+              No mail found.
+            </div>
+          ) : (
+            messages.map((message) => (
+              <MessageRow
+                key={`${message.source}:${message.id}`}
+                message={message}
+                avatar={avatar}
+                onOpen={onOpen}
+              />
+            ))
+          )}
+        </div>
+
+        {nextPageToken ? (
+          <div
+            aria-hidden
+            className="grid min-h-16 place-items-center py-4 text-[var(--text-muted)]"
+            ref={loadMoreRef}
+          >
+            {loadingMore ? <md-circular-progress indeterminate /> : null}
+          </div>
+        ) : null}
+      </div>
 
       <button
         aria-label="Compose"
-        className="font-google-sans fixed bottom-[calc(68px+env(safe-area-inset-bottom))] right-5 z-20 flex h-14 items-center justify-center gap-x-2 rounded-2xl bg-[var(--compose-blue)] px-4 text-base font-semibold text-white shadow-xl active:scale-[0.98]"
+        className="font-google-sans absolute bottom-[calc(68px+env(safe-area-inset-bottom))] right-5 z-20 flex h-14 items-center justify-center gap-x-2 rounded-2xl bg-[var(--compose-blue)] px-4 text-base font-semibold text-white shadow-xl active:scale-[0.98]"
         onClick={onCompose}
         type="button"
       >
@@ -1562,8 +1566,8 @@ function ThreadView({
   const hasThreadBorder = orderedThread.length > 1;
 
   return (
-    <div className="relative h-full overflow-x-hidden overflow-y-auto overscroll-contain pb-[calc(154px+env(safe-area-inset-bottom))] pt-[calc(56px+env(safe-area-inset-top))]">
-      <div className="fixed left-0 right-0 top-0 z-30 flex h-[calc(56px+env(safe-area-inset-top))] items-end bg-[var(--bg)] px-3 pb-2">
+    <div className="relative h-full overflow-hidden">
+      <div className="absolute left-0 right-0 top-0 z-30 flex h-[calc(56px+env(safe-area-inset-top))] items-end bg-[var(--bg)] px-3 pb-2">
         <button
           aria-label="Back"
           className="mr-auto grid h-10 w-10 place-items-center text-[var(--text-soft)]"
@@ -1584,42 +1588,44 @@ function ThreadView({
         ))}
       </div>
 
-      <section className="px-6 pt-4">
-        <div className="grid grid-cols-[1fr_42px] gap-2">
-          <h1 className="font-google-sans text-2xl font-normal leading-tight text-[var(--text)]">
-            {message.subject}
-            <span className="ml-2 inline-flex translate-y-[-2px] rounded-md bg-[var(--external)] px-2 py-0.5 text-xs font-medium text-black">
-              External
-            </span>
-            <span className="ml-1 inline-flex translate-y-[-2px] rounded-md border border-[var(--outline)] px-2 py-0.5 text-xs font-medium text-[var(--text-muted)]">
-              Inbox
-            </span>
-          </h1>
-          <button
-            aria-label="Star"
-            className="grid h-11 w-11 place-items-center text-[var(--text-muted)]"
-            type="button"
-          >
-            {icon("star", "text-[24px]")}
-          </button>
-        </div>
-      </section>
+      <div className="absolute inset-0 overflow-x-hidden overflow-y-auto overscroll-contain pb-[calc(154px+env(safe-area-inset-bottom))] pt-[calc(56px+env(safe-area-inset-top))]">
+        <section className="px-6 pt-4">
+          <div className="grid grid-cols-[1fr_42px] gap-2">
+            <h1 className="font-google-sans text-2xl font-normal leading-tight text-[var(--text)]">
+              {message.subject}
+              <span className="ml-2 inline-flex translate-y-[-2px] rounded-md bg-[var(--external)] px-2 py-0.5 text-xs font-medium text-black">
+                External
+              </span>
+              <span className="ml-1 inline-flex translate-y-[-2px] rounded-md border border-[var(--outline)] px-2 py-0.5 text-xs font-medium text-[var(--text-muted)]">
+                Inbox
+              </span>
+            </h1>
+            <button
+              aria-label="Star"
+              className="grid h-11 w-11 place-items-center text-[var(--text-muted)]"
+              type="button"
+            >
+              {icon("star", "text-[24px]")}
+            </button>
+          </div>
+        </section>
 
-      <div className="pt-6">
-        {orderedThread.map((item, index) => (
-          <ThreadMessage
-            avatar={avatar}
-            bordered={hasThreadBorder && index > 0}
-            expanded={item.id === selectedMessageId}
-            item={item}
-            key={`${item.source}:${item.id}`}
-            loading={loading && item.id === selectedMessageId}
-            onSelectMessage={onSelectMessage}
-          />
-        ))}
+        <div className="pt-6">
+          {orderedThread.map((item, index) => (
+            <ThreadMessage
+              avatar={avatar}
+              bordered={hasThreadBorder && index > 0}
+              expanded={item.id === selectedMessageId}
+              item={item}
+              key={`${item.source}:${item.id}`}
+              loading={loading && item.id === selectedMessageId}
+              onSelectMessage={onSelectMessage}
+            />
+          ))}
+        </div>
       </div>
 
-      <div className="fixed bottom-[calc(52px+env(safe-area-inset-bottom))] left-0 right-0 z-20 mx-auto flex items-center gap-2 bg-[var(--bg)] px-4 py-2">
+      <div className="absolute bottom-[calc(52px+env(safe-area-inset-bottom))] left-0 right-0 z-20 mx-auto flex items-center gap-2 bg-[var(--bg)] px-4 py-2">
         <button
           aria-label="Reply"
           className="grid h-12 w-12 shrink-0 place-items-center rounded-full border border-[#3c4043] bg-[var(--bg)] text-[var(--text-soft)] active:bg-white/5"
@@ -1740,7 +1746,7 @@ function ThreadMessage({
 
 function BottomNav() {
   return (
-    <nav className="fixed bottom-0 left-0 z-10 flex h-[calc(52px+env(safe-area-inset-bottom))] w-full items-start justify-around bg-[var(--surface-2)] px-4 pb-[env(safe-area-inset-bottom)] pt-[10px]">
+    <nav className="absolute bottom-0 left-0 z-10 flex h-[calc(52px+env(safe-area-inset-bottom))] w-full items-start justify-around bg-[var(--surface-2)] px-4 pb-[env(safe-area-inset-bottom)] pt-[10px]">
       <button
         aria-label="Mail"
         className="relative grid h-8 w-[72px] place-items-center rounded-[18px] bg-[var(--selected-nav)] text-[#cfe8ff]"
@@ -1782,7 +1788,7 @@ function NavigationDrawer({
   return (
     <div
       className={classNames(
-        "fixed inset-0 z-40 mx-auto h-dvh w-full transition",
+        "absolute inset-0 z-40 mx-auto h-full w-full transition",
         open ? "pointer-events-auto" : "pointer-events-none",
       )}
     >
