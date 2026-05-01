@@ -27,12 +27,6 @@
   --safe-bottom: env(safe-area-inset-bottom, 0px);
 }
 
-@media (pointer: coarse) {
-  :root {
-    --safe-bottom: max(env(safe-area-inset-bottom, 0px), 34px);
-  }
-}
-
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);

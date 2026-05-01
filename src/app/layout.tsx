@@ -17,7 +17,6 @@ export const metadata: Metadata = {
   description: "A mobile Gmail reader PWA with Gmail API and fake mail blending.",
   appleWebApp: {
     capable: true,
-    statusBarStyle: "black",
     title: "Gmail",
   },
   applicationName: "Gmail",
@@ -34,7 +33,6 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   initialScale: 1,
   themeColor: "#111112",
-  viewportFit: "cover",
   width: "device-width",
 };
 
