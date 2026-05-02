@@ -815,13 +815,16 @@ function mergeThreadMessages(
   current: MailMessage[] = [],
 ) {
   const byId = new Map<string, MailMessage>();
-  for (const item of thread.map(normalizeMessage)) {
-    byId.set(item.id, item);
-  }
-  for (const item of current) {
-    byId.set(item.id, item);
-  }
+  const normalizedThread = thread.map(normalizeMessage);
   const selected = normalizeMessage(detail);
+  const targetThreadId = selected.threadId || normalizedThread[0]?.threadId;
+
+  for (const item of normalizedThread) {
+    byId.set(item.id, item);
+  }
+  for (const item of current.filter((item) => item.threadId === targetThreadId)) {
+    byId.set(item.id, item);
+  }
   byId.set(selected.id, selected);
   return sortThread([...byId.values()]);
 }
@@ -907,6 +910,8 @@ export function GmailShell({ children }: { children: ReactNode }) {
         setLoadingMore(true);
       } else {
         setLoading(true);
+        setLoadingMore(false);
+        setNextPageToken(undefined);
       }
       setError(null);
 
@@ -1084,9 +1089,12 @@ export function GmailShell({ children }: { children: ReactNode }) {
         current.includes(message.id) ? current : [...current, message.id],
       );
       setSelectedThread((current) => {
-        const existing = current?.some((item) => item.id === message.id)
-          ? current
-          : [...(current ?? []), message];
+        const sameThread =
+          current?.some((item) => item.threadId === message.threadId) ?? false;
+        const threadMessages = sameThread && current ? current : [];
+        const existing = threadMessages.some((item) => item.id === message.id)
+          ? threadMessages
+          : [...threadMessages, message];
         return sortThread(existing);
       });
       router.push(`/thread/${encodeURIComponent(message.id)}`);
@@ -1101,6 +1109,9 @@ export function GmailShell({ children }: { children: ReactNode }) {
       setExpandedMessageIds((current) =>
         current.includes(messageId) ? current : [...current, messageId],
       );
+      if (!selected && selectedThread?.length) {
+        setSelectedThread(null);
+      }
       if (selected?.bodyHtml !== undefined) {
         return;
       }
@@ -1575,7 +1586,7 @@ function SearchView({
               )}
             </div>
 
-            {nextPageToken ? (
+            {!loading && nextPageToken ? (
               <div
                 aria-hidden
                 className="grid min-h-16 place-items-center py-4 text-[var(--text-muted)]"
